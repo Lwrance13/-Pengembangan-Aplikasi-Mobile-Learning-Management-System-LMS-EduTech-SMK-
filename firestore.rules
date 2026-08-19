@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+
+    function hasAnyRole(roles) {
+      return isAuthenticated() && getUserData().role in roles;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if hasRole('ADMIN') || request.auth.uid == userId;
+    }
+
+    // Materi collection
+    match /materi/{materiId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if hasAnyRole(['GURU_MAPEL', 'ADMIN']);
+    }
+
+    // Tugas collection
+    match /tugas/{tugasId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if hasAnyRole(['GURU_MAPEL', 'ADMIN']);
+
+      // Submissions subcollection
+      match /submissions/{submissionId} {
+        allow read: if isAuthenticated() &&
+          (request.auth.uid == submissionId || hasAnyRole(['GURU_MAPEL', 'WALI_KELAS', 'ADMIN']));
+        allow create, update: if isAuthenticated() && request.auth.uid == submissionId;
+      }
+    }
+
+    // Absensi collection
+    match /absensi/{absensiId} {
+      allow read: if isAuthenticated();
+      allow create: if hasAnyRole(['GURU_MAPEL', 'GURU_PIKET', 'ADMIN']);
+      allow update: if hasAnyRole(['GURU_MAPEL', 'WALI_KELAS', 'ADMIN']);
+    }
+
+    // Pelanggaran collection
+    match /pelanggaran/{pelanggaranId} {
+      allow read: if isAuthenticated();
+      allow create, update: if hasAnyRole(['WALI_KELAS', 'GURU_BK', 'GURU_PIKET', 'GURU_MAPEL', 'ADMIN']);
+      allow delete: if hasAnyRole(['WALI_KELAS', 'ADMIN']);
+    }
+
+    // Konseling collection (confidential)
+    match /konseling/{konselingId} {
+      allow read, write: if isAuthenticated() &&
+        (resource.data.student_id == request.auth.uid ||
+         resource.data.bk_id == request.auth.uid ||
+         hasRole('ADMIN'));
+      allow create: if isAuthenticated();
+    }
+
+    // Chat collection
+    match /chats/{chatId} {
+      allow read, write: if isAuthenticated() &&
+        (request.auth.uid in resource.data.participants || hasRole('ADMIN'));
+      allow create: if isAuthenticated();
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() &&
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow create: if isAuthenticated() &&
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      }
+    }
+
+    // Notifikasi collection
+    match /notifikasi/{notifId} {
+      allow read, update: if isAuthenticated() && resource.data.user_id == request.auth.uid;
+      allow create: if hasAnyRole(['GURU_MAPEL', 'WALI_KELAS', 'GURU_PIKET', 'ADMIN']);
+    }
+
+    // Pengumuman collection
+    match /pengumuman/{pengId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if hasAnyRole(['GURU_PIKET', 'ADMIN']);
+    }
+
+    // Jadwal collection
+    match /jadwal/{jadwalId} {
+      allow read: if isAuthenticated();
+      allow write: if hasRole('ADMIN');
+    }
+
+    // Nilai collection
+    match /nilai/{nilaiId} {
+      allow read: if isAuthenticated();
+      allow create, update: if hasAnyRole(['GURU_MAPEL', 'ADMIN']);
+    }
+
+    // Piket harian collection
+    match /piket_harian/{piketId} {
+      allow read: if isAuthenticated();
+      allow create, update: if hasAnyRole(['GURU_PIKET', 'ADMIN']);
+    }
+  }
+}
