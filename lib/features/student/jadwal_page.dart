@@ -24,14 +24,17 @@ class JadwalPage extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection(FirebaseConstants.jadwalCollection)
             .where('kelas', isEqualTo: kelas)
-            .orderBy('hari_index')
-            .orderBy('jam_mulai')
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          final docs = snapshot.data!.docs;
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return const Center(child: _EmptyState(icon: Icons.calendar_today, message: 'Jadwal belum tersedia.'));
+          }
+          final docs = snapshot.data?.docs ?? [];
           if (docs.isEmpty) {
-            return const Center(child: Text('Belum ada jadwal untuk kelas ini.'));
+            return const Center(child: _EmptyState(icon: Icons.calendar_today, message: 'Belum ada jadwal untuk kelas ini.'));
           }
           // Kelompokkan per hari
           final grouped = <String, List<QueryDocumentSnapshot>>{};
@@ -48,10 +51,8 @@ class JadwalPage extends StatelessWidget {
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      hari,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
+                    child: Text(hari,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.primary)),
                   ),
                   ...grouped[hari]!.map((doc) {
                     final d = doc.data() as Map<String, dynamic>;
@@ -68,8 +69,9 @@ class JadwalPage extends StatelessWidget {
                         ),
                         title: Text(d['mapel'] ?? ''),
                         subtitle: Text(
-                          '${d['jam_mulai'] ?? ''} - ${d['jam_selesai'] ?? ''} • ${d['guru_name'] ?? '-'}',
+                          '${d['jam'] ?? ''} • ${d['guru'] ?? d['guru_name'] ?? '-'}\n${d['ruang'] ?? ''}',
                         ),
+                        isThreeLine: true,
                       ),
                     );
                   }),
@@ -82,3 +84,22 @@ class JadwalPage extends StatelessWidget {
     );
   }
 }
+
+class _EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String message;
+  const _EmptyState({required this.icon, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 64, color: Colors.grey.shade400),
+        const SizedBox(height: 12),
+        Text(message, style: TextStyle(color: Colors.grey.shade600, fontSize: 15)),
+      ],
+    );
+  }
+}
+

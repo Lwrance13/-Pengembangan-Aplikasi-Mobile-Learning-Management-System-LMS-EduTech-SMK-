@@ -1,4 +1,158 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "tugas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "kelas", "order": "ASCENDING" },
+        { "fieldPath": "deadline", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tugas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "guru_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "absensi",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "student_id", "order": "ASCENDING" },
+        { "fieldPath": "tanggal", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "absensi",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "kelas", "order": "ASCENDING" },
+        { "fieldPath": "tanggal", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "kuis",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "kelas", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "nilai",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "student_id", "order": "ASCENDING" },
+        { "fieldPath": "tanggal", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifikasi",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_id", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifikasi",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "user_id", "order": "ASCENDING" },
+        { "fieldPath": "is_read", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "konseling",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "student_id", "order": "ASCENDING" },
+        { "fieldPath": "tanggal", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "konseling",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "bk_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "konseling",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "bk_id", "order": "ASCENDING" },
+        { "fieldPath": "tanggal", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pelanggaran",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "kelas", "order": "ASCENDING" },
+        { "fieldPath": "poin", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pelanggaran",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "kelas", "order": "ASCENDING" },
+        { "fieldPath": "tanggal", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "pelanggaran",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "student_id", "order": "ASCENDING" },
+        { "fieldPath": "tanggal", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "materi",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "guru_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "piket_harian",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "jenis", "order": "ASCENDING" },
+        { "fieldPath": "tanggal_str", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "chats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "participants", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "is_confidential", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "role", "order": "ASCENDING" },
+        { "fieldPath": "kelas", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "role", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

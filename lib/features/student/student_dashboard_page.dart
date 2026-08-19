@@ -6,6 +6,7 @@ import '../../core/services/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../shared/notification_list_page.dart';
+import '../shared/chat_room_page.dart';
 import '../auth/login_page.dart';
 import 'assignment_view.dart';
 import 'jadwal_page.dart';
@@ -70,6 +71,15 @@ class _StudentHomeTab extends StatelessWidget {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
+  void _pushChatGuru(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _ChatGuruListPage(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -128,7 +138,7 @@ class _StudentHomeTab extends StatelessWidget {
               _QuickAction(icon: Icons.quiz_outlined, label: 'Kuis', color: AppTheme.accent, onTap: () => _push(context, const QuizListPage())),
               _QuickAction(icon: Icons.bar_chart_outlined, label: 'Nilai', color: AppTheme.success, onTap: () => _push(context, const NilaiPage())),
               _QuickAction(icon: Icons.assignment_outlined, label: 'Tugas', color: AppTheme.primary, onTap: () {}),
-              _QuickAction(icon: Icons.chat_outlined, label: 'Chat Guru', color: AppTheme.guruMapelColor, onTap: () {}),
+              _QuickAction(icon: Icons.chat_outlined, label: 'Chat Guru', color: AppTheme.guruMapelColor, onTap: () => _pushChatGuru(context)),
               _QuickAction(icon: Icons.psychology_outlined, label: 'BK', color: AppTheme.guruBkColor, onTap: () => _push(context, const BkBookingPage())),
               _QuickAction(icon: Icons.report_outlined, label: 'Pelanggaran', color: AppTheme.danger, onTap: () => _push(context, const PelanggaranSiswaPage())),
               _QuickAction(icon: Icons.campaign_outlined, label: 'Pengumuman', color: AppTheme.warning, onTap: () {}),
@@ -147,7 +157,7 @@ class _StudentHomeTab extends StatelessWidget {
                 .limit(5)
                 .snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const LinearProgressIndicator();
+              if (snapshot.hasError || !snapshot.hasData) return const LinearProgressIndicator();
               final docs = snapshot.data!.docs;
               if (docs.isEmpty) {
                 return const Card(
@@ -196,8 +206,11 @@ class _StudentMateriTab extends StatelessWidget {
           .orderBy('created_at', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError || !snapshot.hasData) {
+          return const Center(child: Text('Belum ada materi.'));
         }
         final docs = snapshot.data!.docs;
         if (docs.isEmpty) {
@@ -261,8 +274,19 @@ class _StudentAbsensiTab extends StatelessWidget {
                 .limit(30)
                 .snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-              final docs = snapshot.data!.docs;
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return const Center(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.calendar_month, size: 48, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text('Belum ada data absensi.', style: TextStyle(color: AppTheme.textSecondary)),
+                  ]),
+                );
+              }
+              final docs = snapshot.data?.docs ?? [];
               final hadir = docs.where((d) => (d.data() as Map)['status'] == 'hadir').length;
               final alpha = docs.where((d) => (d.data() as Map)['status'] == 'alpha').length;
               final izin = docs.where((d) => (d.data() as Map)['status'] == 'izin').length;
@@ -438,6 +462,73 @@ class _InfoRow extends StatelessWidget {
           const Text(': '),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
         ],
+      ),
+    );
+  }
+}
+
+/// Halaman daftar guru mapel untuk chat
+class _ChatGuruListPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Chat dengan Guru'),
+        backgroundColor: AppTheme.guruMapelColor,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection(FirebaseConstants.usersCollection)
+            .where('role', isEqualTo: 'GURU_MAPEL')
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snapshot.data?.docs ?? [];
+          if (docs.isEmpty) {
+            return const Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.people_outline, size: 64, color: Colors.grey),
+                SizedBox(height: 12),
+                Text('Belum ada guru tersedia.', style: TextStyle(color: AppTheme.textSecondary)),
+              ]),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(12),
+            itemCount: docs.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, i) {
+              final d = docs[i].data() as Map<String, dynamic>;
+              return Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: AppTheme.guruMapelColor,
+                    child: Text(
+                      (d['name'] as String? ?? '?').isNotEmpty
+                          ? (d['name'] as String)[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  title: Text(d['name'] ?? ''),
+                  subtitle: Text('${d['mapel'] ?? '-'}'),
+                  trailing: const Icon(Icons.chat_outlined, color: AppTheme.guruMapelColor),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatRoomPage(
+                        otherUserId: docs[i].id,
+                        otherUserName: d['name'] ?? 'Guru',
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
