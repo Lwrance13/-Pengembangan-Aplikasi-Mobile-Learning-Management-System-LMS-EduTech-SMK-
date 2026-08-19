@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -37,28 +38,40 @@ class _UploadMaterialPageState extends State<UploadMaterialPage> {
 
   Future<void> _upload() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih file terlebih dahulu!')),
-      );
-      return;
-    }
     setState(() { _uploading = true; _progress = 0; });
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       String? fileUrl;
 
-      final bytes = _selectedFile!.bytes;
+      // Upload file ke Storage (opsional - lanjut meski gagal)
+      final bytes = _selectedFile?.bytes;
       if (bytes != null) {
-        final contentType = _type == 'pdf' ? 'application/pdf' : 'video/mp4';
-        fileUrl = await StorageService().uploadBytes(
-          bytes: bytes,
-          storagePath: FirebaseConstants.materiStoragePath,
-          customFileName: '${DateTime.now().millisecondsSinceEpoch}_${_selectedFile!.name}',
-          contentType: contentType,
-        );
+        try {
+          final contentType = _type == 'pdf' ? 'application/pdf' : 'video/mp4';
+          fileUrl = await StorageService().uploadBytes(
+            bytes: bytes,
+            storagePath: FirebaseConstants.materiStoragePath,
+            customFileName: '${DateTime.now().millisecondsSinceEpoch}_${_selectedFile!.name}',
+            contentType: contentType,
+          ).timeout(
+            const Duration(seconds: 20),
+            onTimeout: () => throw Exception('Upload timeout. Materi disimpan tanpa file.'),
+          );
+        } catch (uploadError) {
+          // Upload gagal — simpan ke Firestore tanpa file URL
+          debugPrint('Storage upload error: $uploadError');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('File tidak terunggah: $uploadError\nMenyimpan data tanpa file...'),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
       }
 
+      // Simpan ke Firestore (selalu berhasil kalau Firestore OK)
       await FirebaseFirestore.instance
           .collection(FirebaseConstants.materiCollection)
           .add({
@@ -68,7 +81,7 @@ class _UploadMaterialPageState extends State<UploadMaterialPage> {
         'deskripsi': _deskripsiCtrl.text.trim(),
         'type': _type,
         'file_url': fileUrl,
-        'file_name': _selectedFile!.name,
+        'file_name': _selectedFile?.name ?? '',
         'guru_id': uid,
         'guru_name': FirebaseAuth.instance.currentUser?.displayName ?? '',
         'created_at': FieldValue.serverTimestamp(),
@@ -77,7 +90,7 @@ class _UploadMaterialPageState extends State<UploadMaterialPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Materi berhasil diunggah!'),
+            content: Text('✅ Materi berhasil disimpan!'),
             backgroundColor: AppTheme.success,
           ),
         );

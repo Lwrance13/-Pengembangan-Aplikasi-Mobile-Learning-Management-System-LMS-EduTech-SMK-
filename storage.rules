@@ -1,0 +1,29 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Materi: semua user bisa baca, guru mapel bisa upload
+    match /materi/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 50 * 1024 * 1024;
+    }
+    // Tugas submissions: semua user bisa baca & upload
+    match /tugas_submissions/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 20 * 1024 * 1024;
+    }
+    // Profile photos
+    match /profile_photos/{fileName} {
+      allow read;
+      allow write: if request.auth != null
+        && request.resource.size < 5 * 1024 * 1024;
+    }
+    // Default: semua authenticated user bisa read/write
+    match /{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 100 * 1024 * 1024;
+    }
+  }
+}
