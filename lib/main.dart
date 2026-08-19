@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'core/services/auth_provider.dart';
@@ -65,13 +66,27 @@ class _AuthGateState extends State<_AuthGate> {
   }
 
   Future<void> _init() async {
-    final auth = context.read<AuthProvider>();
-    await auth.loadCurrentUser();
-    if (auth.isLoggedIn) {
-      await FcmService().initialize();
-      await FcmService().subscribeToRole(auth.user!.role);
+    try {
+      final auth = context.read<AuthProvider>();
+      await auth.loadCurrentUser();
+
+      // FCM hanya untuk mobile (Android/iOS), bukan web
+      // Web butuh VAPID key & service worker tambahan
+      if (auth.isLoggedIn && !kIsWeb) {
+        try {
+          await FcmService().initialize();
+          await FcmService().subscribeToRole(auth.user!.role);
+        } catch (e) {
+          // FCM gagal tidak menghalangi app berjalan
+          debugPrint('FCM init error (non-fatal): $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('Init error: $e');
+    } finally {
+      // Selalu set initialized=true agar app tidak stuck loading
+      if (mounted) setState(() => _initialized = true);
     }
-    setState(() => _initialized = true);
   }
 
   @override

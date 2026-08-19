@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../services/auth_service.dart';
 import '../services/user_model.dart';
@@ -31,9 +32,17 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> loadCurrentUser() async {
-    final fbUser = _authService.currentUser;
-    if (fbUser != null) {
-      _user = await _authService.getUserData(fbUser.uid);
+    try {
+      final fbUser = _authService.currentUser;
+      if (fbUser != null) {
+        // Timeout 10 detik agar tidak hang selamanya
+        _user = await _authService.getUserData(fbUser.uid)
+            .timeout(const Duration(seconds: 10));
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('loadCurrentUser error: $e');
+      _user = null;
       notifyListeners();
     }
   }

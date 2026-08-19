@@ -8,6 +8,7 @@ import '../teacher/teacher_dashboard_page.dart';
 import '../wali_kelas/wali_dashboard_page.dart';
 import '../bk/bk_dashboard_page.dart';
 import '../piket/piket_dashboard_page.dart';
+import '../admin/admin_dashboard_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -56,8 +57,11 @@ class _LoginPageState extends State<LoginPage> {
       case AppRoles.guruPiket:
         destination = const PiketDashboardPage();
         break;
+      case AppRoles.admin:
+        destination = const AdminDashboardPage();
+        break;
       default:
-        destination = const StudentDashboardPage();
+        destination = const LoginPage();
     }
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => destination),
