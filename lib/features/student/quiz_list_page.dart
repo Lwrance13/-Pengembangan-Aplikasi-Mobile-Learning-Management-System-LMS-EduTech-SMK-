@@ -24,7 +24,7 @@ class QuizListPage extends StatelessWidget {
             .orderBy('created_at', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator()); if (snapshot.hasError || !snapshot.hasData) return const Center(child: Text("Belum ada data.", style: TextStyle(color: Color(0xFF6B7280))));
           final docs = snapshot.data!.docs;
           if (docs.isEmpty) {
             return const Center(child: Text('Belum ada kuis.'));

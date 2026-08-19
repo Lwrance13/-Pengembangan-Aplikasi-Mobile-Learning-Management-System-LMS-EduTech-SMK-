@@ -108,7 +108,7 @@ class _WaliHomeTab extends StatelessWidget {
                 .where('kelas', isEqualTo: kelas)
                 .snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const LinearProgressIndicator();
+              if (snapshot.hasError || !snapshot.hasData) return const SizedBox.shrink();
               final students = snapshot.data!.docs;
               if (students.isEmpty) {
                 return const Card(child: ListTile(title: Text('Belum ada siswa di kelas ini.')));
@@ -146,12 +146,9 @@ class _WaliAbsensiTab extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(FirebaseConstants.absensiCollection)
-          .where('kelas', isEqualTo: kelas)
-          .orderBy('tanggal', descending: true)
-          .limit(50)
-          .snapshots(),
+          .where('kelas', isEqualTo: kelas).limit(50).snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator()); if (snapshot.hasError || !snapshot.hasData) return const Center(child: Text("Belum ada data.", style: TextStyle(color: Color(0xFF6B7280))));
         final docs = snapshot.data!.docs;
         if (docs.isEmpty) return const Center(child: Text('Belum ada data absensi.'));
         return ListView.separated(
@@ -198,11 +195,9 @@ class _WaliPelanggaranTab extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(FirebaseConstants.pelanggaranCollection)
-          .where('kelas', isEqualTo: kelas)
-          .orderBy('tanggal', descending: true)
-          .snapshots(),
+          .where('kelas', isEqualTo: kelas).snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator()); if (snapshot.hasError || !snapshot.hasData) return const Center(child: Text("Belum ada data.", style: TextStyle(color: Color(0xFF6B7280))));
         final docs = snapshot.data!.docs;
         if (docs.isEmpty) return const Center(child: Text('Tidak ada catatan pelanggaran.'));
         return ListView.separated(

@@ -25,10 +25,7 @@ class NotificationListPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection(FirebaseConstants.notifikasiCollection)
-            .where('user_id', isEqualTo: uid)
-            .orderBy('timestamp', descending: true)
-            .limit(50)
-            .snapshots(),
+            .where('user_id', isEqualTo: uid).limit(50).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

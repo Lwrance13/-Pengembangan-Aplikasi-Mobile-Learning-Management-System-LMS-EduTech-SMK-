@@ -106,7 +106,7 @@ class _BkHomeTab extends StatelessWidget {
                 .where('status', isEqualTo: 'pending')
                 .snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const LinearProgressIndicator();
+              if (snapshot.hasError || !snapshot.hasData) return const SizedBox.shrink();
               final docs = snapshot.data!.docs;
               if (docs.isEmpty) {
                 return const Card(child: ListTile(
@@ -151,7 +151,7 @@ class _BkHomeTab extends StatelessWidget {
                 .where('is_confidential', isEqualTo: true)
                 .snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const LinearProgressIndicator();
+              if (snapshot.hasError || !snapshot.hasData) return const SizedBox.shrink();
               final chats = snapshot.data!.docs;
               if (chats.isEmpty) return const Card(child: ListTile(title: Text('Belum ada percakapan.')));
               return Column(
@@ -206,11 +206,9 @@ class _BkKonselingTab extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection(FirebaseConstants.konselingCollection)
-            .where('bk_id', isEqualTo: uid)
-            .orderBy('tanggal')
-            .snapshots(),
+            .where('bk_id', isEqualTo: uid).snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator()); if (snapshot.hasError || !snapshot.hasData) return const Center(child: Text("Belum ada data.", style: TextStyle(color: Color(0xFF6B7280))));
           final docs = snapshot.data!.docs;
           if (docs.isEmpty) return const Center(child: Text('Belum ada jadwal konseling.'));
           return ListView.separated(

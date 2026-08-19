@@ -137,11 +137,11 @@ class _StudentHomeTab extends StatelessWidget {
               _QuickAction(icon: Icons.calendar_today_outlined, label: 'Jadwal', color: AppTheme.primary, onTap: () => _push(context, const JadwalPage())),
               _QuickAction(icon: Icons.quiz_outlined, label: 'Kuis', color: AppTheme.accent, onTap: () => _push(context, const QuizListPage())),
               _QuickAction(icon: Icons.bar_chart_outlined, label: 'Nilai', color: AppTheme.success, onTap: () => _push(context, const NilaiPage())),
-              _QuickAction(icon: Icons.assignment_outlined, label: 'Tugas', color: AppTheme.primary, onTap: () {}),
+              _QuickAction(icon: Icons.assignment_outlined, label: 'Tugas', color: AppTheme.primary, onTap: () => _push(context, const _TugasSiswaPage())),
               _QuickAction(icon: Icons.chat_outlined, label: 'Chat Guru', color: AppTheme.guruMapelColor, onTap: () => _pushChatGuru(context)),
               _QuickAction(icon: Icons.psychology_outlined, label: 'BK', color: AppTheme.guruBkColor, onTap: () => _push(context, const BkBookingPage())),
               _QuickAction(icon: Icons.report_outlined, label: 'Pelanggaran', color: AppTheme.danger, onTap: () => _push(context, const PelanggaranSiswaPage())),
-              _QuickAction(icon: Icons.campaign_outlined, label: 'Pengumuman', color: AppTheme.warning, onTap: () {}),
+              _QuickAction(icon: Icons.campaign_outlined, label: 'Pengumuman', color: AppTheme.warning, onTap: () => _push(context, const _PengumumanPage())),
             ],
           ),
           const SizedBox(height: 20),
@@ -524,6 +524,170 @@ class _ChatGuruListPage extends StatelessWidget {
                       ),
                     ),
                   ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Halaman daftar tugas untuk siswa
+class _TugasSiswaPage extends StatelessWidget {
+  const _TugasSiswaPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final kelas = auth.user?.kelas ?? '';
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Daftar Tugas'),
+        backgroundColor: AppTheme.siswaColor,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection(FirebaseConstants.tugasCollection)
+            .where('kelas', isEqualTo: kelas)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snapshot.data?.docs ?? [];
+          if (docs.isEmpty) {
+            return const Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.assignment_outlined, size: 64, color: Colors.grey),
+                SizedBox(height: 12),
+                Text('Belum ada tugas.', style: TextStyle(color: AppTheme.textSecondary)),
+              ]),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(12),
+            itemCount: docs.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, i) {
+              final d = docs[i].data() as Map<String, dynamic>;
+              final deadline = (d['deadline'] as Timestamp?)?.toDate();
+              final isDeadlinePassed = deadline != null && deadline.isBefore(DateTime.now());
+              return Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: isDeadlinePassed
+                        ? AppTheme.danger.withValues(alpha: 0.1)
+                        : AppTheme.primary.withValues(alpha: 0.1),
+                    child: Icon(
+                      Icons.assignment_outlined,
+                      color: isDeadlinePassed ? AppTheme.danger : AppTheme.primary,
+                    ),
+                  ),
+                  title: Text(d['judul'] ?? ''),
+                  subtitle: Text(
+                    '${d['mapel'] ?? '-'}'
+                    '${deadline != null ? '\nDeadline: ${deadline.day}/${deadline.month}/${deadline.year}' : ''}',
+                  ),
+                  trailing: Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: isDeadlinePassed ? AppTheme.danger : null,
+                  ),
+                  isThreeLine: deadline != null,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AssignmentView(tugasId: docs[i].id, tugasData: d),
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Halaman pengumuman sekolah
+class _PengumumanPage extends StatelessWidget {
+  const _PengumumanPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Pengumuman Sekolah'),
+        backgroundColor: AppTheme.warning,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection(FirebaseConstants.pengumumanCollection)
+            .orderBy('timestamp', descending: true)
+            .limit(30)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snapshot.data?.docs ?? [];
+          if (docs.isEmpty) {
+            return const Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.campaign_outlined, size: 64, color: Colors.grey),
+                SizedBox(height: 12),
+                Text('Belum ada pengumuman.', style: TextStyle(color: AppTheme.textSecondary)),
+              ]),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(12),
+            itemCount: docs.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, i) {
+              final d = docs[i].data() as Map<String, dynamic>;
+              final timestamp = (d['timestamp'] as Timestamp?)?.toDate();
+              final isDarurat = d['jenis'] == 'darurat';
+              return Card(
+                color: isDarurat ? AppTheme.danger.withValues(alpha: 0.05) : null,
+                shape: isDarurat
+                    ? RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: AppTheme.danger.withValues(alpha: 0.4)),
+                      )
+                    : null,
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: isDarurat
+                        ? AppTheme.danger.withValues(alpha: 0.15)
+                        : AppTheme.warning.withValues(alpha: 0.15),
+                    child: Icon(
+                      isDarurat ? Icons.warning_amber : Icons.campaign,
+                      color: isDarurat ? AppTheme.danger : AppTheme.warning,
+                    ),
+                  ),
+                  title: Text(
+                    d['judul'] ?? '',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDarurat ? AppTheme.danger : null,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(d['isi'] ?? ''),
+                      if (timestamp != null)
+                        Text(
+                          '${timestamp.day}/${timestamp.month}/${timestamp.year} ${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}',
+                          style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                        ),
+                    ],
+                  ),
+                  isThreeLine: true,
                 ),
               );
             },

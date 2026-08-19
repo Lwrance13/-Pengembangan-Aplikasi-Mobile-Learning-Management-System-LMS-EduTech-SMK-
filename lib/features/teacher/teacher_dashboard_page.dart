@@ -129,10 +129,7 @@ class _TeacherHomeTab extends StatelessWidget {
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection(FirebaseConstants.tugasCollection)
-                .where('guru_id', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
-                .orderBy('created_at', descending: true)
-                .limit(10)
-                .snapshots(),
+                .where('guru_id', isEqualTo: FirebaseAuth.instance.currentUser?.uid).limit(10).snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError || !snapshot.hasData) return const LinearProgressIndicator();
               final docs = snapshot.data!.docs;
@@ -231,9 +228,7 @@ class _TeacherMateriTab extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection(FirebaseConstants.materiCollection)
-            .where('guru_id', isEqualTo: uid)
-            .orderBy('created_at', descending: true)
-            .snapshots(),
+            .where('guru_id', isEqualTo: uid).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator()); if (snapshot.hasError) return const Center(child: Text("Belum ada data.", style: TextStyle(color: Color(0xFF6B7280))));
           final docs = snapshot.data!.docs;

@@ -132,7 +132,7 @@ class _PiketHomeTab extends StatelessWidget {
                     isEqualTo: '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}')
                 .snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return const LinearProgressIndicator();
+              if (snapshot.hasError || !snapshot.hasData) return const SizedBox.shrink();
               final docs = snapshot.data!.docs;
               if (docs.isEmpty) {
                 return const Card(
@@ -221,11 +221,9 @@ class _PiketCatatanTab extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection(FirebaseConstants.piketCollection)
-            .orderBy('timestamp', descending: true)
-            .limit(30)
-            .snapshots(),
+            .limit(30).snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator()); if (snapshot.hasError || !snapshot.hasData) return const Center(child: Text("Belum ada data.", style: TextStyle(color: Color(0xFF6B7280))));
           final docs = snapshot.data!.docs;
           if (docs.isEmpty) return const Center(child: Text('Belum ada catatan.'));
           return ListView.separated(

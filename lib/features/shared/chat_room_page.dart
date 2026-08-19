@@ -93,9 +93,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   .orderBy('timestamp', descending: false)
                   .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+                if (snapshot.connectionState == ConnectionState.waiting) { return const Center(child: CircularProgressIndicator()); } if (snapshot.hasError || !snapshot.hasData) { return const Center(child: Text("Belum ada data.")); }
                 final messages = snapshot.data!.docs;
                 return ListView.builder(
                   controller: _scrollCtrl,
