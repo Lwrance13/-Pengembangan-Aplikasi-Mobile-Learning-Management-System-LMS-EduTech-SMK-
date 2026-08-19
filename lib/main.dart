@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
+import 'firebase_options.dart';
 import 'core/services/auth_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_page.dart';
@@ -10,19 +11,20 @@ import 'features/teacher/teacher_dashboard_page.dart';
 import 'features/wali_kelas/wali_dashboard_page.dart';
 import 'features/bk/bk_dashboard_page.dart';
 import 'features/piket/piket_dashboard_page.dart';
+import 'features/admin/admin_dashboard_page.dart';
 import 'core/constants/roles.dart';
 import 'core/services/fcm_service.dart';
 
 // Background FCM message handler (must be top-level)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   debugPrint('Background FCM message: ${message.notification?.title}');
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   runApp(const EduTechSMKApp());
 }
@@ -110,6 +112,8 @@ class _AuthGateState extends State<_AuthGate> {
         return const BkDashboardPage();
       case AppRoles.guruPiket:
         return const PiketDashboardPage();
+      case AppRoles.admin:
+        return const AdminDashboardPage();
       default:
         return const LoginPage();
     }

@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import '../../core/services/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/firebase_constants.dart';
+import '../../core/services/notification_trigger_service.dart';
 import '../shared/notification_list_page.dart';
 import '../auth/login_page.dart';
 import 'upload_material_page.dart';
@@ -180,18 +181,27 @@ class _TeacherHomeTab extends StatelessWidget {
           ElevatedButton(
             onPressed: () async {
               final uid = FirebaseAuth.instance.currentUser?.uid;
+              final judul = judulCtrl.text.trim();
+              final kelas = kelasCtrl.text.trim();
               await FirebaseFirestore.instance
                   .collection(FirebaseConstants.tugasCollection)
                   .add({
-                'judul': judulCtrl.text.trim(),
+                'judul': judul,
                 'deskripsi': deskripsiCtrl.text.trim(),
-                'kelas': kelasCtrl.text.trim(),
+                'kelas': kelas,
                 'mapel': mapel,
                 'guru_id': uid,
                 'deadline': Timestamp.fromDate(DateTime.now().add(const Duration(days: 7))),
                 'created_at': FieldValue.serverTimestamp(),
                 'submission_count': 0,
               });
+              // 🔔 Trigger FCM notifikasi ke semua siswa kelas ini
+              await NotificationTriggerService.notifyTugasBaru(
+                kelas: kelas,
+                judulTugas: judul,
+                mapel: mapel,
+                guruId: uid ?? '',
+              );
               if (ctx.mounted) Navigator.pop(ctx);
             },
             child: const Text('Simpan'),

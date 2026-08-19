@@ -11,6 +11,8 @@ import 'assignment_view.dart';
 import 'jadwal_page.dart';
 import 'nilai_page.dart';
 import 'quiz_list_page.dart';
+import 'bk_booking_page.dart';
+import 'pelanggaran_siswa_page.dart';
 
 class StudentDashboardPage extends StatefulWidget {
   const StudentDashboardPage({super.key});
@@ -127,8 +129,8 @@ class _StudentHomeTab extends StatelessWidget {
               _QuickAction(icon: Icons.bar_chart_outlined, label: 'Nilai', color: AppTheme.success, onTap: () => _push(context, const NilaiPage())),
               _QuickAction(icon: Icons.assignment_outlined, label: 'Tugas', color: AppTheme.primary, onTap: () {}),
               _QuickAction(icon: Icons.chat_outlined, label: 'Chat Guru', color: AppTheme.guruMapelColor, onTap: () {}),
-              _QuickAction(icon: Icons.psychology_outlined, label: 'BK', color: AppTheme.guruBkColor, onTap: () {}),
-              _QuickAction(icon: Icons.report_outlined, label: 'Pelanggaran', color: AppTheme.danger, onTap: () {}),
+              _QuickAction(icon: Icons.psychology_outlined, label: 'BK', color: AppTheme.guruBkColor, onTap: () => _push(context, const BkBookingPage())),
+              _QuickAction(icon: Icons.report_outlined, label: 'Pelanggaran', color: AppTheme.danger, onTap: () => _push(context, const PelanggaranSiswaPage())),
               _QuickAction(icon: Icons.campaign_outlined, label: 'Pengumuman', color: AppTheme.warning, onTap: () {}),
             ],
           ),

@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import '../../core/services/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/firebase_constants.dart';
+import '../../core/services/notification_trigger_service.dart';
 import '../shared/notification_list_page.dart';
 import '../auth/login_page.dart';
 import 'quick_scan_page.dart';
@@ -187,15 +188,13 @@ class _PiketHomeTab extends StatelessWidget {
             onPressed: () async {
               final msg = msgCtrl.text.trim();
               if (msg.isEmpty) return;
-              await FirebaseFirestore.instance
-                  .collection(FirebaseConstants.pengumumanCollection)
-                  .add({
-                'judul': '⚠️ Pengumuman Darurat',
-                'isi': msg,
-                'jenis': 'darurat',
-                'sender_id': FirebaseAuth.instance.currentUser?.uid,
-                'timestamp': FieldValue.serverTimestamp(),
-              });
+              final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+              // 🔔 Broadcast via NotificationTriggerService (kirim ke semua user)
+              await NotificationTriggerService.broadcastDarurat(
+                judul: '⚠️ Pengumuman Darurat',
+                pesan: msg,
+                senderId: uid,
+              );
               if (ctx.mounted) Navigator.pop(ctx);
             },
             icon: const Icon(Icons.send),
