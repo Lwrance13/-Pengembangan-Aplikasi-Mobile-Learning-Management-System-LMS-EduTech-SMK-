@@ -1,4 +1,4 @@
-# EduTech SMK ó Mobile Learning Management System (LMS)
+# EduTech SMK ÔøΩ Mobile Learning Management System (LMS)
 
 **Mata Kuliah: Mobile Cross-Platform Development**
 
@@ -22,6 +22,12 @@ Aplikasi mobile berbasis cross-platform untuk mendukung proses pembelajaran di l
 
 **https://project-1-96fa1.web.app**
 
+## üé¨ Video Demo
+
+[![EduTech SMK - Demo Video](https://img.youtube.com/vi/ej6BdBUSugE/maxresdefault.jpg)](https://youtu.be/ej6BdBUSugE?si=eQPBHjSKjqBkUqnB)
+
+‚ñ∂Ô∏è **[Tonton di YouTube](https://youtu.be/ej6BdBUSugE?si=eQPBHjSKjqBkUqnB)**
+
 ## 6 Role Pengguna
 
 | Role | Fitur Utama |
@@ -40,18 +46,18 @@ lib/
 +-- main.dart
 +-- firebase_options.dart
 +-- core/
-¶   +-- constants/      # roles.dart, firebase_constants.dart
-¶   +-- theme/          # app_theme.dart
-¶   +-- services/       # auth, fcm, storage, notification, seed
+ÔøΩ   +-- constants/      # roles.dart, firebase_constants.dart
+ÔøΩ   +-- theme/          # app_theme.dart
+ÔøΩ   +-- services/       # auth, fcm, storage, notification, seed
 +-- features/
-¶   +-- auth/           # login_page.dart, role_selection.dart
-¶   +-- student/        # dashboard, tugas, kuis, jadwal, nilai, bk, pelanggaran
-¶   +-- teacher/        # dashboard, upload_material
-¶   +-- wali_kelas/     # dashboard, alert_system_widget
-¶   +-- bk/             # dashboard, case_tracking
-¶   +-- piket/          # dashboard, quick_scan
-¶   +-- admin/          # admin_dashboard
-¶   +-- shared/         # chat_room, notification_list
+ÔøΩ   +-- auth/           # login_page.dart, role_selection.dart
+ÔøΩ   +-- student/        # dashboard, tugas, kuis, jadwal, nilai, bk, pelanggaran
+ÔøΩ   +-- teacher/        # dashboard, upload_material
+ÔøΩ   +-- wali_kelas/     # dashboard, alert_system_widget
+ÔøΩ   +-- bk/             # dashboard, case_tracking
+ÔøΩ   +-- piket/          # dashboard, quick_scan
+ÔøΩ   +-- admin/          # admin_dashboard
+ÔøΩ   +-- shared/         # chat_room, notification_list
 ```
 
 ## Setup
@@ -80,6 +86,6 @@ firebase deploy --only hosting
 
 - [x] Fungsional Multi-Role (6 role)
 - [x] Backend Cloud Integration (Firebase Auth + Firestore)
-- [x] Live Web Deployment ó https://project-1-96fa1.web.app
+- [x] Live Web Deployment ÔøΩ https://project-1-96fa1.web.app
 - [x] Push Notification FCM (auto-trigger)
 - [ ] Video Demo 10 Menit
