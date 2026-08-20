@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:provider/provider.dart';
 import '../../core/constants/firebase_constants.dart';
+import '../../core/services/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 
 class ChatRoomPage extends StatefulWidget {
@@ -49,13 +51,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     final chatRef = _db.collection(FirebaseConstants.chatCollection).doc(_chatId);
 
     // PENTING: buat/update dokumen chat DULU sebelum tulis pesan
-    // Rules messages subcollection mengecek participants di parent doc
+    // student_name = selalu nama SISWA (self-healing untuk chat lama)
+    final myName = context.read<AuthProvider>().user?.name ?? '';
+    final userRole = context.read<AuthProvider>().user?.role ?? '';
+    // Jika current user = SISWA → pakai myName; jika guru/BK → pakai otherUserName
+    final studentName = userRole == 'SISWA' ? myName : widget.otherUserName;
     await chatRef.set({
       'participants': [uid, widget.otherUserId],
       'last_message': text,
       'last_timestamp': FieldValue.serverTimestamp(),
       'is_confidential': widget.isConfidential,
-      'student_name': widget.otherUserName,
+      'student_name': studentName,
       'updated_at': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
