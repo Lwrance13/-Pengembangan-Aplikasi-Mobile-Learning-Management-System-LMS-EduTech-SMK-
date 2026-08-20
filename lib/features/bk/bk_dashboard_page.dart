@@ -25,6 +25,7 @@ class _BkDashboardPageState extends State<BkDashboardPage> {
       _BkHomeTab(),
       _BkKonselingTab(),
       CaseTrackingPage(),
+      _BkPelanggaranTab(),
       _BkProfilTab(),
     ];
     return Scaffold(
@@ -49,6 +50,7 @@ class _BkDashboardPageState extends State<BkDashboardPage> {
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Beranda'),
           NavigationDestination(icon: Icon(Icons.calendar_today_outlined), label: 'Konseling'),
           NavigationDestination(icon: Icon(Icons.track_changes_outlined), label: 'Kasus'),
+          NavigationDestination(icon: Icon(Icons.gavel_outlined), label: 'Pelanggaran'),
           NavigationDestination(icon: Icon(Icons.person_outlined), label: 'Profil'),
         ],
       ),
@@ -273,6 +275,178 @@ class _BkKonselingTab extends StatelessWidget {
       builder: (_) => const AlertDialog(
         title: Text('Jadwal Konseling'),
         content: Text('Gunakan tab Beranda untuk menyetujui booking dari siswa.'),
+      ),
+    );
+  }
+}
+
+class _BkPelanggaranTab extends StatelessWidget {
+  const _BkPelanggaranTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection(FirebaseConstants.pelanggaranCollection)
+            .snapshots(),
+        builder: (context, snap) {
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          final docs = snap.data!.docs;
+          // Sort by poin desc in memory
+          final sorted = [...docs]..sort((a, b) {
+              final pa = (a.data() as Map)['poin'] as int? ?? 0;
+              final pb = (b.data() as Map)['poin'] as int? ?? 0;
+              return pb.compareTo(pa);
+            });
+          if (sorted.isEmpty) {
+            return const Center(child: Text('Belum ada catatan pelanggaran.'));
+          }
+          return Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                color: AppTheme.guruBkColor.withValues(alpha: 0.08),
+                child: const Row(
+                  children: [
+                    Icon(Icons.gavel_outlined, color: AppTheme.guruBkColor, size: 18),
+                    SizedBox(width: 8),
+                    Text('Verifikasi & Penanganan Pelanggaran',
+                        style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.guruBkColor)),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: sorted.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) {
+                    final d = sorted[i].data() as Map<String, dynamic>;
+                    final poin = d['poin'] as int? ?? 0;
+                    final verified = d['bk_verified'] as bool? ?? false;
+                    final ts = (d['tanggal'] as Timestamp?)?.toDate();
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: poin >= 80 ? AppTheme.danger : AppTheme.warning,
+                                  child: Text('$poin',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(d['student_name'] ?? '',
+                                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                                      Text('${d['kelas'] ?? '-'} • ${d['jenis'] ?? '-'}',
+                                          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                                    ],
+                                  ),
+                                ),
+                                if (verified)
+                                  const Chip(
+                                    label: Text('Terverifikasi',
+                                        style: TextStyle(color: Colors.white, fontSize: 10)),
+                                    backgroundColor: AppTheme.success,
+                                  )
+                                else
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTheme.guruBkColor,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12)),
+                                    onPressed: () => _showVerifyDialog(context, sorted[i].id, d),
+                                    child: const Text('Verifikasi', style: TextStyle(fontSize: 12)),
+                                  ),
+                              ],
+                            ),
+                            if ((d['deskripsi'] as String? ?? '').isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Text(d['deskripsi'] ?? '',
+                                  style: const TextStyle(fontSize: 13)),
+                            ],
+                            if (ts != null)
+                              Text('${ts.day}/${ts.month}/${ts.year}',
+                                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                            if (verified && (d['bk_catatan'] as String? ?? '').isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.psychology_outlined, size: 14, color: AppTheme.guruBkColor),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text('Catatan BK: ${d['bk_catatan'] ?? ''}',
+                                        style: const TextStyle(fontSize: 12, color: AppTheme.guruBkColor)),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showVerifyDialog(BuildContext context, String docId, Map<String, dynamic> existing) {
+    final catatanCtrl = TextEditingController(text: existing['bk_catatan'] ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Verifikasi Pelanggaran'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Siswa: ${existing['student_name'] ?? '-'}',
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text('Jenis: ${existing['jenis'] ?? '-'} • Poin: ${existing['poin'] ?? 0}'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: catatanCtrl,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Catatan / Rekomendasi BK',
+                border: OutlineInputBorder(),
+                hintText: 'Contoh: Siswa telah dipanggil, diberikan bimbingan...',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.guruBkColor),
+            onPressed: () async {
+              await FirebaseFirestore.instance
+                  .collection(FirebaseConstants.pelanggaranCollection)
+                  .doc(docId)
+                  .update({
+                'bk_verified': true,
+                'bk_catatan': catatanCtrl.text.trim(),
+                'bk_verified_at': FieldValue.serverTimestamp(),
+                'bk_id': FirebaseAuth.instance.currentUser?.uid,
+              });
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('Verifikasi & Simpan'),
+          ),
+        ],
       ),
     );
   }

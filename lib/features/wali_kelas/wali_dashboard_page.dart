@@ -353,36 +353,132 @@ class _WaliPelanggaranTab extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final kelas = auth.user?.kelas ?? '';
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection(FirebaseConstants.pelanggaranCollection)
-          .where('kelas', isEqualTo: kelas).snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator()); if (snapshot.hasError || !snapshot.hasData) return const Center(child: Text("Belum ada data.", style: TextStyle(color: Color(0xFF6B7280))));
-        final docs = snapshot.data!.docs;
-        if (docs.isEmpty) return const Center(child: Text('Tidak ada catatan pelanggaran.'));
-        return ListView.separated(
-          padding: const EdgeInsets.all(12),
-          itemCount: docs.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 6),
-          itemBuilder: (context, i) {
-            final d = docs[i].data() as Map<String, dynamic>;
-            final poin = d['poin'] ?? 0;
-            return Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: poin >= 80 ? AppTheme.danger : AppTheme.warning,
-                  child: Text('$poin', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _inputPelanggaran(context, kelas, auth.user?.name ?? ''),
+        icon: const Icon(Icons.add),
+        label: const Text('Catat Pelanggaran'),
+        backgroundColor: AppTheme.waliKelasColor,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection(FirebaseConstants.pelanggaranCollection)
+            .where('kelas', isEqualTo: kelas).snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+          if (snapshot.hasError || !snapshot.hasData) return const Center(child: Text("Belum ada data.", style: TextStyle(color: Color(0xFF6B7280))));
+          final docs = snapshot.data!.docs;
+          if (docs.isEmpty) {
+            return Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.warning_amber_outlined, size: 64, color: Colors.grey),
+                const SizedBox(height: 12),
+                const Text('Tidak ada catatan pelanggaran.', style: TextStyle(color: AppTheme.textSecondary)),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.waliKelasColor),
+                  onPressed: () => _inputPelanggaran(context, kelas, auth.user?.name ?? ''),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Catat Pelanggaran Pertama'),
                 ),
-                title: Text(d['student_name'] ?? ''),
-                subtitle: Text(d['deskripsi'] ?? ''),
-                trailing: Text(d['jenis'] ?? '',
-                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-              ),
+              ]),
             );
-          },
-        );
-      },
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
+            itemCount: docs.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 6),
+            itemBuilder: (context, i) {
+              final d = docs[i].data() as Map<String, dynamic>;
+              final poin = d['poin'] ?? 0;
+              return Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: poin >= 80 ? AppTheme.danger : AppTheme.warning,
+                    child: Text('$poin', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                  title: Text(d['student_name'] ?? ''),
+                  subtitle: Text('${d['jenis'] ?? ''} • ${d['deskripsi'] ?? ''}'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 18),
+                    onPressed: () => docs[i].reference.delete(),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _inputPelanggaran(BuildContext context, String kelas, String waliName) {
+    final namaCtrl = TextEditingController();
+    final deskripsiCtrl = TextEditingController();
+    final poinCtrl = TextEditingController(text: '10');
+    String jenis = 'Tata Tertib';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('Catat Pelanggaran Siswa'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: namaCtrl,
+                    decoration: const InputDecoration(labelText: 'Nama Siswa')),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: jenis,
+                  items: const [
+                    DropdownMenuItem(value: 'Tata Tertib', child: Text('Tata Tertib')),
+                    DropdownMenuItem(value: 'Akademik', child: Text('Akademik')),
+                    DropdownMenuItem(value: 'Sosial', child: Text('Sosial')),
+                    DropdownMenuItem(value: 'Disiplin', child: Text('Disiplin')),
+                  ],
+                  onChanged: (v) => setS(() => jenis = v!),
+                  decoration: const InputDecoration(labelText: 'Jenis'),
+                ),
+                const SizedBox(height: 8),
+                TextField(controller: deskripsiCtrl, maxLines: 2,
+                    decoration: const InputDecoration(labelText: 'Deskripsi')),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: poinCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Poin (0–100)'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.waliKelasColor),
+              onPressed: () async {
+                if (namaCtrl.text.trim().isEmpty) return;
+                final poin = int.tryParse(poinCtrl.text.trim()) ?? 10;
+                await FirebaseFirestore.instance
+                    .collection(FirebaseConstants.pelanggaranCollection)
+                    .add({
+                  'student_name': namaCtrl.text.trim(),
+                  'kelas': kelas,
+                  'jenis': jenis,
+                  'deskripsi': deskripsiCtrl.text.trim(),
+                  'poin': poin,
+                  'input_by': 'wali_kelas',
+                  'dicatat_oleh': waliName,
+                  'tanggal': FieldValue.serverTimestamp(),
+                });
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
