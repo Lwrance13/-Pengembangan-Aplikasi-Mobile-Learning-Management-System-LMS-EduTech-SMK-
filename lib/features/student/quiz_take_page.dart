@@ -53,12 +53,18 @@ class _QuizTakePageState extends State<QuizTakePage> {
         .collection(FirebaseConstants.kuisCollection)
         .doc(widget.kuisId)
         .collection(FirebaseConstants.quizQuestionsSub)
-        .orderBy('index')
         .get();
+    // Sort by index in memory — agar kompatibel dengan dokumen lama tanpa field index
+    final sortedDocs = qSnap.docs.toList()
+      ..sort((a, b) {
+        final ia = (a.data() as Map)['index'] as int? ?? 0;
+        final ib = (b.data() as Map)['index'] as int? ?? 0;
+        return ia.compareTo(ib);
+      });
     if (mounted) {
       setState(() {
-        _questions = qSnap.docs;
-        _answers = List<int?>.filled(qSnap.docs.length, null);
+        _questions = sortedDocs;
+        _answers = List<int?>.filled(sortedDocs.length, null);
         _loading = false;
       });
     }

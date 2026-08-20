@@ -34,6 +34,40 @@ class SeedDataService {
     await seedJadwal();
     await seedPengumuman();
     await seedAbsensiDemo();
+
+    // 4. Fix semua kuis yang ada tapi belum memiliki soal
+    await fixKuisQuestions();
+  }
+
+  /// Tambahkan soal ke semua kuis yang belum memiliki soal
+  static Future<void> fixKuisQuestions() async {
+    final kuisSnap = await _db.collection('kuis').get();
+    for (final kuis in kuisSnap.docs) {
+      final questionsSnap = await _db
+          .collection('kuis')
+          .doc(kuis.id)
+          .collection('questions')
+          .limit(1)
+          .get();
+      if (questionsSnap.docs.isEmpty) {
+        // Kuis tidak punya soal — tambahkan soal default
+        await _addDefaultQuestions(kuis.id);
+      }
+    }
+  }
+
+  static Future<void> _addDefaultQuestions(String kuisId) async {
+    final soalList = [
+      {'pertanyaan': 'Tag HTML untuk membuat judul terbesar adalah...', 'pilihan': ['<h6>', '<h1>', '<title>', '<head>'], 'jawaban': 1, 'index': 0},
+      {'pertanyaan': 'Property CSS untuk mengubah warna teks adalah...', 'pilihan': ['background-color', 'font-size', 'color', 'text-align'], 'jawaban': 2, 'index': 1},
+      {'pertanyaan': 'Tag HTML untuk membuat hyperlink adalah...', 'pilihan': ['<link>', '<a>', '<href>', '<url>'], 'jawaban': 1, 'index': 2},
+      {'pertanyaan': 'Atribut HTML untuk menentukan tujuan link adalah...', 'pilihan': ['src', 'href', 'link', 'target'], 'jawaban': 1, 'index': 3},
+      {'pertanyaan': 'Tag HTML untuk membuat daftar tanpa nomor adalah...', 'pilihan': ['<ol>', '<dl>', '<ul>', '<list>'], 'jawaban': 2, 'index': 4},
+    ];
+    final ref = _db.collection('kuis').doc(kuisId);
+    for (final s in soalList) {
+      await ref.collection('questions').add(s);
+    }
   }
 
   // ── 1. USERS — returns guru.mapel UID ──────────────────────────────────────
