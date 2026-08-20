@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/auth_provider.dart';
+import '../shared/chat_room_page.dart';
 
 class BkBookingPage extends StatefulWidget {
   const BkBookingPage({super.key});
@@ -157,21 +158,52 @@ class _BkBookingPageState extends State<BkBookingPage> {
                     final d = doc.data() as Map<String, dynamic>;
                     final status = d['status'] as String? ?? 'pending';
                     final tanggal = (d['tanggal'] as Timestamp?)?.toDate();
+                    final bkId = d['bk_id'] as String? ?? '';
+                    final bkName = 'Guru BK';
                     return Card(
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: _statusColor(status),
-                          child: Icon(_statusIcon(status), color: Colors.white, size: 18),
-                        ),
-                        title: Text(d['kategori'] ?? ''),
-                        subtitle: Text(tanggal != null
-                            ? '${tanggal.day}/${tanggal.month}/${tanggal.year}'
-                            : 'Menunggu...'),
-                        trailing: Chip(
-                          label: Text(status.toUpperCase(),
-                              style: const TextStyle(color: Colors.white, fontSize: 10)),
-                          backgroundColor: _statusColor(status),
-                        ),
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: _statusColor(status),
+                              child: Icon(_statusIcon(status), color: Colors.white, size: 18),
+                            ),
+                            title: Text(d['kategori'] ?? ''),
+                            subtitle: Text(tanggal != null
+                                ? '${tanggal.day}/${tanggal.month}/${tanggal.year}'
+                                : 'Menunggu...'),
+                            trailing: Chip(
+                              label: Text(status.toUpperCase(),
+                                  style: const TextStyle(color: Colors.white, fontSize: 10)),
+                              backgroundColor: _statusColor(status),
+                            ),
+                          ),
+                          // Tombol Chat BK muncul saat booking approved
+                          if (status == 'approved' && bkId.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.guruBkColor,
+                                  ),
+                                  onPressed: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ChatRoomPage(
+                                        otherUserId: bkId,
+                                        otherUserName: bkName,
+                                        isConfidential: true,
+                                      ),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.lock_outlined, size: 16),
+                                  label: const Text('Chat Rahasia dengan Guru BK'),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     );
                   }).toList(),

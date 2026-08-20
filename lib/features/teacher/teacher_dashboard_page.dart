@@ -8,6 +8,7 @@ import '../../core/constants/firebase_constants.dart';
 import '../../core/services/notification_trigger_service.dart';
 import '../shared/notification_list_page.dart';
 import '../shared/forum_page.dart';
+import '../shared/chat_room_page.dart';
 import 'upload_material_page.dart';
 import 'kuis_questions_page.dart';
 import 'tugas_submissions_page.dart';
@@ -28,6 +29,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
       const _TeacherHomeTab(),
       const _TeacherMateriTab(),
       const _TeacherKuisTab(),
+      const _TeacherChatTab(),
       const _TeacherMonitoringTab(),
       const _TeacherAbsensiTab(),
       const _TeacherProfilTab(),
@@ -54,6 +56,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Beranda'),
           NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: 'Materi'),
           NavigationDestination(icon: Icon(Icons.quiz_outlined), label: 'Kuis'),
+          NavigationDestination(icon: Icon(Icons.chat_outlined), label: 'Chat'),
           NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'Monitoring'),
           NavigationDestination(icon: Icon(Icons.how_to_reg_outlined), label: 'Absensi'),
           NavigationDestination(icon: Icon(Icons.person_outlined), label: 'Profil'),
@@ -867,6 +870,85 @@ class _StatBox extends StatelessWidget {
           Text('$value', style: TextStyle(color: color, fontSize: 28, fontWeight: FontWeight.bold)),
           Text(label, style: const TextStyle(fontSize: 12)),
         ],
+      ),
+    );
+  }
+}
+
+class _TeacherChatTab extends StatelessWidget {
+  const _TeacherChatTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    return Scaffold(
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection(FirebaseConstants.chatCollection)
+            .where('participants', arrayContains: uid)
+            .snapshots(),
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snap.data?.docs ?? [];
+          // sort by last_timestamp desc in memory (no orderBy to avoid composite index)
+          final sorted = [...docs]..sort((a, b) {
+              final ta = (a.data() as Map)['last_timestamp'] as Timestamp?;
+              final tb = (b.data() as Map)['last_timestamp'] as Timestamp?;
+              if (ta == null || tb == null) return 0;
+              return tb.compareTo(ta);
+            });
+          if (sorted.isEmpty) {
+            return const Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                SizedBox(height: 12),
+                Text('Belum ada pesan dari siswa.',
+                    style: TextStyle(color: AppTheme.textSecondary)),
+              ]),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(12),
+            itemCount: sorted.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, i) {
+              final d = sorted[i].data() as Map<String, dynamic>;
+              final participants = List<String>.from(d['participants'] ?? []);
+              final otherUid = participants.firstWhere(
+                  (id) => id != uid, orElse: () => '');
+              final lastMsg = d['last_message'] as String? ?? '';
+              final lastTs = (d['last_timestamp'] as Timestamp?)?.toDate();
+              return Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: AppTheme.guruMapelColor,
+                    child: const Icon(Icons.person, color: Colors.white),
+                  ),
+                  title: Text(d['student_name'] ?? otherUid,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(lastMsg, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: lastTs != null
+                      ? Text(
+                          '${lastTs.hour.toString().padLeft(2, '0')}:${lastTs.minute.toString().padLeft(2, '0')}',
+                          style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                        )
+                      : null,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatRoomPage(
+                        otherUserId: otherUid,
+                        otherUserName: d['student_name'] ?? 'Siswa',
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
