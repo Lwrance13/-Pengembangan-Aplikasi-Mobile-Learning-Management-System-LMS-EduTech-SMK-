@@ -109,5 +109,45 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create, update: if hasAnyRole(['GURU_PIKET', 'ADMIN']);
     }
+
+    // Kuis collection + subcollections
+    match /kuis/{kuisId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if hasAnyRole(['GURU_MAPEL', 'ADMIN']);
+
+      match /questions/{questionId} {
+        allow read: if isAuthenticated();
+        allow write: if hasAnyRole(['GURU_MAPEL', 'ADMIN']);
+      }
+
+      match /submissions/{submissionId} {
+        allow read: if isAuthenticated() &&
+          (request.auth.uid == submissionId || hasAnyRole(['GURU_MAPEL', 'WALI_KELAS', 'ADMIN']));
+        allow create, update: if isAuthenticated() && request.auth.uid == submissionId;
+      }
+    }
+
+    // Forum collection + replies subcollection
+    match /forum/{threadId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() &&
+        (resource.data.author_id == request.auth.uid || hasAnyRole(['GURU_MAPEL', 'ADMIN']));
+      allow delete: if hasAnyRole(['GURU_MAPEL', 'ADMIN']);
+
+      match /replies/{replyId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update, delete: if isAuthenticated() &&
+          (resource.data.author_id == request.auth.uid || hasAnyRole(['GURU_MAPEL', 'ADMIN']));
+      }
+    }
+
+    // Buku Penghubung collection
+    match /buku_penghubung/{pesan} {
+      allow read: if isAuthenticated();
+      allow create: if hasAnyRole(['WALI_KELAS', 'ADMIN']);
+      allow update, delete: if hasAnyRole(['WALI_KELAS', 'ADMIN']);
+    }
   }
 }
