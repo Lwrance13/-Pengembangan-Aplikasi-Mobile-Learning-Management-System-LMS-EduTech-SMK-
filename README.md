@@ -24,9 +24,9 @@ Aplikasi mobile berbasis cross-platform untuk mendukung proses pembelajaran di l
 
 ## 🎬 Video Demo
 
-[![EduTech SMK - Demo Video](https://img.youtube.com/vi/ej6BdBUSugE/maxresdefault.jpg)](https://youtu.be/ej6BdBUSugE?si=eQPBHjSKjqBkUqnB)
+[![EduTech SMK - Demo Video]([https://img.youtube.com/vi/ej6BdBUSugE/maxresdefault.jpg)](https://youtu.be/ej6BdBUSugE?si=eQPBHjSKjqBkUqnB](https://youtu.be/XH08Qt1YsOQ))
 
-▶️ **[Tonton di YouTube](https://youtu.be/ej6BdBUSugE?si=eQPBHjSKjqBkUqnB)**
+▶️ **[Tonton di YouTube]([https://youtu.be/ej6BdBUSugE?si=eQPBHjSKjqBkUqnB](https://youtu.be/XH08Qt1YsOQ))**
 
 ## 6 Role Pengguna
 
