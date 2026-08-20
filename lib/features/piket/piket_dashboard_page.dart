@@ -2,6 +2,8 @@
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../core/services/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/firebase_constants.dart';
@@ -28,7 +30,7 @@ class _PiketDashboardPageState extends State<PiketDashboardPage> {
     ];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('EduTech SMK â€” Guru Piket'),
+        title: const Text('EduTech SMK — Guru Piket'),
         backgroundColor: AppTheme.guruPiketColor,
         actions: [
           IconButton(
@@ -187,9 +189,9 @@ class _PiketHomeTab extends StatelessWidget {
               final msg = msgCtrl.text.trim();
               if (msg.isEmpty) return;
               final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-              // ðŸ”” Broadcast via NotificationTriggerService (kirim ke semua user)
+              // 🔔 Broadcast via NotificationTriggerService (kirim ke semua user)
               await NotificationTriggerService.broadcastDarurat(
-                judul: 'âš ï¸ Pengumuman Darurat',
+                judul: '⚠️ Pengumuman Darurat',
                 pesan: msg,
                 senderId: uid,
               );
@@ -367,11 +369,38 @@ class QuickScanPage extends StatefulWidget {
 
 class _QuickScanPageState extends State<QuickScanPage> {
   bool _isProcessing = false;
+  bool _cameraActive = false;
   String? _resultMessage;
   bool _resultSuccess = false;
+  MobileScannerController? _cameraController;
+
+  @override
+  void dispose() {
+    _cameraController?.dispose();
+    super.dispose();
+  }
+
+  void _startCamera() {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Scan QR hanya tersedia di Android/iOS. Gunakan input NISN manual.')),
+      );
+      return;
+    }
+    setState(() {
+      _cameraController = MobileScannerController();
+      _cameraActive = true;
+    });
+  }
+
+  void _stopCamera() {
+    _cameraController?.dispose();
+    setState(() { _cameraController = null; _cameraActive = false; });
+  }
 
   Future<void> _processNisn(String nisn) async {
     if (_isProcessing || nisn.isEmpty) return;
+    _stopCamera();
     setState(() => _isProcessing = true);
     try {
       final snap = await FirebaseFirestore.instance
@@ -393,11 +422,11 @@ class _QuickScanPageState extends State<QuickScanPage> {
         'status': 'hadir',
         'tanggal': Timestamp.fromDate(DateTime.now()),
         'piket_id': FirebaseAuth.instance.currentUser?.uid,
-        'scan_type': 'manual',
+        'scan_type': _cameraActive ? 'qr_scan' : 'manual',
         'mapel': 'PIKET',
       });
       setState(() {
-        _resultMessage = '? ${studentData['name']} — Kelas ${studentData['kelas']}\nAbsensi berhasil dicatat!';
+        _resultMessage = '✅ ${studentData['name']} — Kelas ${studentData['kelas']}\nAbsensi berhasil dicatat!';
         _resultSuccess = true; _isProcessing = false;
       });
       Future.delayed(const Duration(seconds: 4), () {
@@ -414,18 +443,49 @@ class _QuickScanPageState extends State<QuickScanPage> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Container(
-            height: 160, width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.guruPiketColor.withValues(alpha: 0.4), width: 2),
-            ),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(Icons.qr_code_2, size: 64, color: AppTheme.guruPiketColor),
+          // Camera / QR scanner area
+          if (_cameraActive && _cameraController != null)
+            Column(children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  height: 260,
+                  child: MobileScanner(
+                    controller: _cameraController!,
+                    onDetect: (capture) {
+                      final code = capture.barcodes.firstOrNull?.rawValue ?? '';
+                      if (code.isNotEmpty) _processNisn(code);
+                    },
+                  ),
+                ),
+              ),
               const SizedBox(height: 8),
-              const Text('Input NISN untuk absensi cepat', style: TextStyle(color: AppTheme.textSecondary)),
-            ]),
-          ),
+              TextButton.icon(
+                onPressed: _stopCamera,
+                icon: const Icon(Icons.close),
+                label: const Text('Tutup Kamera'),
+              ),
+            ])
+          else
+            Container(
+              height: 160, width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.guruPiketColor.withValues(alpha: 0.4), width: 2),
+              ),
+              child: InkWell(
+                onTap: _startCamera,
+                borderRadius: BorderRadius.circular(12),
+                child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.qr_code_scanner, size: 56, color: AppTheme.guruPiketColor),
+                  SizedBox(height: 8),
+                  Text('Ketuk untuk Scan QR Absensi',
+                      style: TextStyle(color: AppTheme.guruPiketColor, fontWeight: FontWeight.w600)),
+                  Text('(NISN siswa harus ter-encode di QR)',
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                ]),
+              ),
+            ),
           const SizedBox(height: 16),
           if (_resultMessage != null) ...[
             Container(
@@ -440,7 +500,7 @@ class _QuickScanPageState extends State<QuickScanPage> {
             ),
             const SizedBox(height: 16),
           ],
-          const Text('Input NISN Manual:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const Text('Atau Input NISN Manual:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           const SizedBox(height: 8),
           _NisnInput(onSubmit: _processNisn, isProcessing: _isProcessing),
         ],

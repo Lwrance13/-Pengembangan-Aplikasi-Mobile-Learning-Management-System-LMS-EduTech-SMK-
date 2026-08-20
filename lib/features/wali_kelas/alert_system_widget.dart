@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 /// Widget alert sistem cerdas untuk Wali Kelas.
 /// Menampilkan notifikasi otomatis ketika siswa:
 /// - Alpha > 3x
+/// - Nilai drop >20% dibanding rata-rata sebelumnya
 /// - Poin pelanggaran >= 80 (mendekati batas maksimum 100)
 class AlertSystemWidget extends StatelessWidget {
   const AlertSystemWidget({super.key});
@@ -23,6 +24,7 @@ class AlertSystemWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _AlphaAlert(kelas: kelas),
+        _NilaiDropAlert(kelas: kelas),
         _PelanggaranAlert(kelas: kelas),
       ],
     );
@@ -77,6 +79,64 @@ class _AlphaAlert extends StatelessWidget {
           'name': (student.data() as Map)['name'] ?? '',
           'count': snap.docs.length,
         });
+      }
+    }
+    return result;
+  }
+}
+
+class _NilaiDropAlert extends StatelessWidget {
+  final String kelas;
+  const _NilaiDropAlert({required this.kelas});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<String>>(
+      future: _getDropStudents(),
+      builder: (context, snap) {
+        if (!snap.hasData || snap.data!.isEmpty) return const SizedBox.shrink();
+        return _AlertCard(
+          icon: Icons.trending_down,
+          title: '📉 Alert Nilai Drop >20%',
+          color: AppTheme.accent,
+          items: snap.data!,
+        );
+      },
+    );
+  }
+
+  Future<List<String>> _getDropStudents() async {
+    // Get all students in this class
+    final studentsSnap = await FirebaseFirestore.instance
+        .collection(FirebaseConstants.usersCollection)
+        .where('role', isEqualTo: 'SISWA')
+        .where('kelas', isEqualTo: kelas)
+        .get();
+
+    final result = <String>[];
+    for (final student in studentsSnap.docs) {
+      final name = (student.data())['name'] as String? ?? '';
+      // Get nilai sorted by time for this student
+      final nilaiSnap = await FirebaseFirestore.instance
+          .collection(FirebaseConstants.nilaiCollection)
+          .where('student_id', isEqualTo: student.id)
+          .get();
+      if (nilaiSnap.docs.length < 2) continue;
+
+      final sorted = nilaiSnap.docs.toList()
+        ..sort((a, b) {
+          final ta = (a.data())['tanggal'] as Timestamp?;
+          final tb = (b.data())['tanggal'] as Timestamp?;
+          if (ta == null || tb == null) return 0;
+          return ta.compareTo(tb);
+        });
+
+      // Compare latest vs previous nilai
+      final latest = ((sorted.last.data())['nilai'] as num?)?.toDouble() ?? 0;
+      final previous = ((sorted[sorted.length - 2].data())['nilai'] as num?)?.toDouble() ?? 0;
+
+      if (previous > 0 && (previous - latest) / previous > 0.20) {
+        result.add('$name — ${previous.round()} → ${latest.round()} (drop ${(((previous - latest) / previous) * 100).round()}%)');
       }
     }
     return result;

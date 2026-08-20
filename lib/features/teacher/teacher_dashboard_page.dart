@@ -621,6 +621,20 @@ class _TeacherMonitoringTab extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
+          // Lapor pelanggaran siswa
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Pelanggaran Siswa', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+                onPressed: () => _laporPelanggaran(context, mapel, uid),
+                icon: const Icon(Icons.report_outlined, size: 16),
+                label: const Text('Lapor'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           // Input nilai manual
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -748,6 +762,89 @@ class _TeacherMonitoringTab extends StatelessWidget {
                 if (ctx.mounted) Navigator.pop(ctx);
               },
               child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _laporPelanggaran(BuildContext context, String mapel, String? uid) {
+    final namaCtrl = TextEditingController();
+    final kelasCtrl = TextEditingController();
+    final deskripsiCtrl = TextEditingController();
+    final poinCtrl = TextEditingController(text: '10');
+    String jenis = 'Akademik';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('Lapor Pelanggaran Siswa'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: namaCtrl,
+                    decoration: const InputDecoration(labelText: 'Nama Siswa')),
+                const SizedBox(height: 8),
+                TextField(controller: kelasCtrl,
+                    decoration: const InputDecoration(labelText: 'Kelas')),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: jenis,
+                  items: const [
+                    DropdownMenuItem(value: 'Akademik', child: Text('Akademik')),
+                    DropdownMenuItem(value: 'Tata Tertib', child: Text('Tata Tertib')),
+                    DropdownMenuItem(value: 'Disiplin', child: Text('Disiplin')),
+                    DropdownMenuItem(value: 'Sosial', child: Text('Sosial')),
+                  ],
+                  onChanged: (v) => setS(() => jenis = v!),
+                  decoration: const InputDecoration(labelText: 'Jenis'),
+                ),
+                const SizedBox(height: 8),
+                TextField(controller: deskripsiCtrl, maxLines: 2,
+                    decoration: const InputDecoration(labelText: 'Deskripsi Pelanggaran')),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: poinCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Poin Pelanggaran (0–100)'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+              onPressed: () async {
+                if (namaCtrl.text.trim().isEmpty) return;
+                final poin = int.tryParse(poinCtrl.text.trim()) ?? 10;
+                await FirebaseFirestore.instance
+                    .collection(FirebaseConstants.pelanggaranCollection)
+                    .add({
+                  'student_name': namaCtrl.text.trim(),
+                  'kelas': kelasCtrl.text.trim(),
+                  'mapel': mapel,
+                  'jenis': jenis,
+                  'deskripsi': deskripsiCtrl.text.trim(),
+                  'poin': poin,
+                  'dilaporkan_oleh': uid,
+                  'input_by': 'guru_mapel',
+                  'tanggal': FieldValue.serverTimestamp(),
+                });
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✅ Pelanggaran berhasil dilaporkan'),
+                      backgroundColor: AppTheme.success,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Lapor'),
             ),
           ],
         ),
