@@ -24,35 +24,59 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   final _msgCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   final _db = FirebaseFirestore.instance;
-  final User _currentUser = FirebaseAuth.instance.currentUser!;
+
+  User? get _currentUser => FirebaseAuth.instance.currentUser;
 
   String get _chatId {
-    final ids = [_currentUser.uid, widget.otherUserId]..sort();
+    final uid = _currentUser?.uid ?? '';
+    final ids = [uid, widget.otherUserId]..sort();
     return ids.join('_');
+  }
+
+  @override
+  void dispose() {
+    _msgCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _sendMessage() async {
     final text = _msgCtrl.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _currentUser == null) return;
     _msgCtrl.clear();
 
-    await _db
-        .collection(FirebaseConstants.chatCollection)
-        .doc(_chatId)
-        .collection('messages')
-        .add({
+    final uid = _currentUser!.uid;
+    final chatRef = _db.collection(FirebaseConstants.chatCollection).doc(_chatId);
+
+    // PENTING: buat/update dokumen chat DULU sebelum tulis pesan
+    // Rules messages subcollection mengecek participants di parent doc
+    await chatRef.set({
+      'participants': [uid, widget.otherUserId],
+      'last_message': text,
+      'last_timestamp': FieldValue.serverTimestamp(),
+      'is_confidential': widget.isConfidential,
+      'student_name': widget.otherUserName,
+      'updated_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    // Baru tulis pesan ke subcollection
+    await chatRef.collection('messages').add({
       'text': text,
-      'sender_id': _currentUser.uid,
+      'sender_id': uid,
       'timestamp': FieldValue.serverTimestamp(),
       'is_confidential': widget.isConfidential,
     });
 
-    await _db.collection(FirebaseConstants.chatCollection).doc(_chatId).set({
-      'participants': [_currentUser.uid, widget.otherUserId],
-      'last_message': text,
-      'last_timestamp': FieldValue.serverTimestamp(),
-      'is_confidential': widget.isConfidential,
-    }, SetOptions(merge: true));
+    // Scroll ke bawah
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
@@ -95,13 +119,19 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) { return const Center(child: CircularProgressIndicator()); } if (snapshot.hasError || !snapshot.hasData) { return const Center(child: Text("Belum ada data.")); }
                 final messages = snapshot.data!.docs;
+                if (messages.isEmpty) {
+                  return const Center(
+                    child: Text('Belum ada pesan. Kirim pesan pertama!',
+                        style: TextStyle(color: AppTheme.textSecondary)),
+                  );
+                }
                 return ListView.builder(
                   controller: _scrollCtrl,
                   padding: const EdgeInsets.all(12),
                   itemCount: messages.length,
                   itemBuilder: (context, i) {
                     final msg = messages[i].data() as Map<String, dynamic>;
-                    final isMe = msg['sender_id'] == _currentUser.uid;
+                    final isMe = msg['sender_id'] == _currentUser?.uid;
                     return _MessageBubble(
                       text: msg['text'] ?? '',
                       isMe: isMe,
