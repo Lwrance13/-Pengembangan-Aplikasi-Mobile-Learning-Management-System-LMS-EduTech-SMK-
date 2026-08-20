@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../core/services/notification_trigger_service.dart';
 import '../shared/notification_list_page.dart';
+import '../shared/forum_page.dart';
 import 'upload_material_page.dart';
 import 'kuis_questions_page.dart';
 import 'tugas_submissions_page.dart';
@@ -127,6 +128,18 @@ class _TeacherHomeTab extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ForumPage()),
+              ),
+              icon: const Icon(Icons.forum_outlined, color: AppTheme.primary),
+              label: const Text('Forum Diskusi', style: TextStyle(color: AppTheme.primary)),
+            ),
           ),
           const SizedBox(height: 20),
           const Text('Tugas Saya', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),

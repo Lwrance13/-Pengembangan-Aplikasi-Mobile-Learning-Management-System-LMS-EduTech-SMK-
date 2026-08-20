@@ -23,6 +23,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     final pages = const [
       _AdminHomeTab(),
       _AdminUserManagementTab(),
+      _AdminJadwalTab(),
       _AdminStatistikTab(),
       _AdminPelanggaranTab(),
       _AdminProfilTab(),
@@ -48,6 +49,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
           NavigationDestination(icon: Icon(Icons.people_outlined), label: 'Pengguna'),
+          NavigationDestination(icon: Icon(Icons.calendar_month_outlined), label: 'Jadwal'),
           NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'Statistik'),
           NavigationDestination(icon: Icon(Icons.warning_amber_outlined), label: 'Pelanggaran'),
           NavigationDestination(icon: Icon(Icons.admin_panel_settings_outlined), label: 'Admin'),
@@ -451,6 +453,198 @@ class _AdminUserManagementTabState extends State<_AdminUserManagementTab> {
         ),
       );
     }
+  }
+}
+
+// ─── JADWAL TAB ────────────────────────────────────────────────────────────
+class _AdminJadwalTab extends StatelessWidget {
+  const _AdminJadwalTab();
+
+  static const _hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _addJadwal(context),
+        icon: const Icon(Icons.add),
+        label: const Text('Tambah Jadwal'),
+        backgroundColor: AppTheme.adminColor,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection(FirebaseConstants.jadwalCollection)
+            .snapshots(),
+        builder: (context, snap) {
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          final docs = snap.data!.docs;
+          if (docs.isEmpty) {
+            return const Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.calendar_today_outlined, size: 64, color: Colors.grey),
+                SizedBox(height: 12),
+                Text('Belum ada jadwal. Klik + untuk tambah.',
+                    style: TextStyle(color: AppTheme.textSecondary)),
+              ]),
+            );
+          }
+          // Group by kelas
+          final byKelas = <String, List<QueryDocumentSnapshot>>{};
+          for (final d in docs) {
+            final kelas = (d.data() as Map)['kelas'] as String? ?? '-';
+            byKelas.putIfAbsent(kelas, () => []).add(d);
+          }
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
+            children: byKelas.entries.map((e) {
+              final sorted = [...e.value]..sort((a, b) {
+                  final ha = (a.data() as Map)['hari'] as String? ?? '';
+                  final hb = (b.data() as Map)['hari'] as String? ?? '';
+                  return _hariList.indexOf(ha).compareTo(_hariList.indexOf(hb));
+                });
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text('Kelas ${e.key}',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: AppTheme.adminColor)),
+                  ),
+                  ...sorted.map((doc) {
+                    final d = doc.data() as Map<String, dynamic>;
+                    return Card(
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.adminColor.withValues(alpha: 0.1),
+                          child: Text(
+                            (d['hari'] as String? ?? '-').substring(0, 2),
+                            style: const TextStyle(
+                                color: AppTheme.adminColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        title: Text(d['mapel'] ?? ''),
+                        subtitle: Text(
+                          '${d['hari'] ?? '-'} • ${d['jam_mulai'] ?? ''}-${d['jam_selesai'] ?? ''} • ${d['guru'] ?? '-'}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(d['ruang'] ?? '-',
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.textSecondary)),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline,
+                                  color: AppTheme.danger, size: 18),
+                              onPressed: () => doc.reference.delete(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  const Divider(),
+                ],
+              );
+            }).toList(),
+          );
+        },
+      ),
+    );
+  }
+
+  void _addJadwal(BuildContext context) {
+    final kelasCtrl = TextEditingController();
+    final mapelCtrl = TextEditingController();
+    final guruCtrl = TextEditingController();
+    final jamMulaiCtrl = TextEditingController(text: '07:00');
+    final jamSelesaiCtrl = TextEditingController(text: '08:30');
+    final ruangCtrl = TextEditingController();
+    String hari = 'Senin';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('Tambah Jadwal Pelajaran'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: kelasCtrl,
+                    decoration: const InputDecoration(labelText: 'Kelas', hintText: 'XII-TKJ-1')),
+                const SizedBox(height: 8),
+                TextField(controller: mapelCtrl,
+                    decoration: const InputDecoration(labelText: 'Mata Pelajaran')),
+                const SizedBox(height: 8),
+                TextField(controller: guruCtrl,
+                    decoration: const InputDecoration(labelText: 'Nama Guru')),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: hari,
+                  items: _hariList
+                      .map((h) => DropdownMenuItem(value: h, child: Text(h)))
+                      .toList(),
+                  onChanged: (v) => setS(() => hari = v!),
+                  decoration: const InputDecoration(labelText: 'Hari'),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: jamMulaiCtrl,
+                        decoration: const InputDecoration(labelText: 'Jam Mulai'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: jamSelesaiCtrl,
+                        decoration: const InputDecoration(labelText: 'Jam Selesai'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(controller: ruangCtrl,
+                    decoration: const InputDecoration(labelText: 'Ruang', hintText: 'Lab TKJ 1')),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.adminColor),
+              onPressed: () async {
+                if (kelasCtrl.text.trim().isEmpty || mapelCtrl.text.trim().isEmpty) return;
+                await FirebaseFirestore.instance
+                    .collection(FirebaseConstants.jadwalCollection)
+                    .add({
+                  'kelas': kelasCtrl.text.trim(),
+                  'mapel': mapelCtrl.text.trim(),
+                  'guru': guruCtrl.text.trim(),
+                  'hari': hari,
+                  'jam_mulai': jamMulaiCtrl.text.trim(),
+                  'jam_selesai': jamSelesaiCtrl.text.trim(),
+                  'ruang': ruangCtrl.text.trim(),
+                  'created_at': FieldValue.serverTimestamp(),
+                });
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

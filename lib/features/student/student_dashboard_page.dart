@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../shared/notification_list_page.dart';
 import '../shared/chat_room_page.dart';
+import '../shared/forum_page.dart';
 import 'assignment_view.dart';
 import 'jadwal_page.dart';
 import 'nilai_page.dart';
@@ -141,6 +142,7 @@ class _StudentHomeTab extends StatelessWidget {
               _QuickAction(icon: Icons.psychology_outlined, label: 'BK', color: AppTheme.guruBkColor, onTap: () => _push(context, const BkBookingPage())),
               _QuickAction(icon: Icons.report_outlined, label: 'Pelanggaran', color: AppTheme.danger, onTap: () => _push(context, const PelanggaranSiswaPage())),
               _QuickAction(icon: Icons.campaign_outlined, label: 'Pengumuman', color: AppTheme.warning, onTap: () => _push(context, const _PengumumanPage())),
+              _QuickAction(icon: Icons.forum_outlined, label: 'Forum', color: AppTheme.primary, onTap: () => _push(context, const ForumPage())),
             ],
           ),
           const SizedBox(height: 20),

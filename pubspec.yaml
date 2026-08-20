@@ -54,6 +54,8 @@ dependencies:
   url_launcher: ^6.3.0
   shared_preferences: ^2.2.3
   uuid: ^4.4.0
+  pdf: ^3.13.0
+  printing: ^5.13.1
 
 dev_dependencies:
   flutter_test:

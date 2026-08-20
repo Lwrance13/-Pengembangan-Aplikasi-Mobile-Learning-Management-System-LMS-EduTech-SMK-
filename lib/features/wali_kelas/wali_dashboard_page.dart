@@ -1,6 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../../core/services/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/firebase_constants.dart';
@@ -28,7 +31,7 @@ class _WaliDashboardPageState extends State<WaliDashboardPage> {
     ];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('EduTech SMK — Wali Kelas'),
+        title: const Text('EduTech SMK â€” Wali Kelas'),
         backgroundColor: AppTheme.waliKelasColor,
         actions: [
           IconButton(
@@ -80,6 +83,130 @@ class _WaliHomeTab extends StatelessWidget {
     );
   }
 
+  Future<void> _exportPdf(BuildContext context, String kelas, String waliName) async {
+    // Show loading
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Menyiapkan laporan PDF...')),
+    );
+
+    // Fetch data
+    final db = FirebaseFirestore.instance;
+    final siswaSnap = await db
+        .collection(FirebaseConstants.usersCollection)
+        .where('role', isEqualTo: 'SISWA')
+        .where('kelas', isEqualTo: kelas)
+        .get();
+    final absensiSnap = await db
+        .collection(FirebaseConstants.absensiCollection)
+        .where('kelas', isEqualTo: kelas)
+        .get();
+    final pelanggaranSnap = await db
+        .collection(FirebaseConstants.pelanggaranCollection)
+        .where('kelas', isEqualTo: kelas)
+        .get();
+
+    final pdf = pw.Document();
+    final now = DateTime.now();
+
+    pdf.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      build: (ctx) => [
+        pw.Text('LAPORAN KELAS $kelas',
+            style: pw.TextStyle(
+                fontSize: 18, fontWeight: pw.FontWeight.bold)),
+        pw.Text('Wali Kelas: $waliName',
+            style: const pw.TextStyle(fontSize: 12)),
+        pw.Text(
+            'Tanggal: ${now.day}/${now.month}/${now.year}',
+            style: const pw.TextStyle(fontSize: 12)),
+        pw.SizedBox(height: 16),
+
+        // â”€â”€ Daftar Siswa â”€â”€
+        pw.Text('Daftar Siswa (${siswaSnap.docs.length} siswa)',
+            style: pw.TextStyle(
+                fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 6),
+        pw.TableHelper.fromTextArray(
+          headers: ['No', 'Nama', 'NISN', 'Email'],
+          data: List.generate(siswaSnap.docs.length, (i) {
+            final d = siswaSnap.docs[i].data();
+            return [
+              '${i + 1}',
+              d['name'] ?? '-',
+              d['nisn'] ?? '-',
+              d['email'] ?? '-',
+            ];
+          }),
+          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          cellAlignment: pw.Alignment.centerLeft,
+          cellPadding: const pw.EdgeInsets.all(4),
+        ),
+        pw.SizedBox(height: 16),
+
+        // â”€â”€ Rekap Absensi â”€â”€
+        pw.Text('Rekap Absensi Kelas',
+            style: pw.TextStyle(
+                fontSize: 14, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 6),
+        () {
+          final hadir = absensiSnap.docs
+              .where((d) => (d.data())['status'] == 'hadir')
+              .length;
+          final alpha = absensiSnap.docs
+              .where((d) => (d.data())['status'] == 'alpha')
+              .length;
+          final izin = absensiSnap.docs
+              .where((d) => (d.data())['status'] == 'izin')
+              .length;
+          final sakit = absensiSnap.docs
+              .where((d) => (d.data())['status'] == 'sakit')
+              .length;
+          return pw.TableHelper.fromTextArray(
+            headers: ['Hadir', 'Alpha', 'Izin', 'Sakit', 'Total'],
+            data: [
+              ['$hadir', '$alpha', '$izin', '$sakit',
+                '${absensiSnap.docs.length}']
+            ],
+            headerStyle:
+                pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          );
+        }(),
+        pw.SizedBox(height: 16),
+
+        // â”€â”€ Catatan Pelanggaran â”€â”€
+        if (pelanggaranSnap.docs.isNotEmpty) ...[
+          pw.Text(
+              'Catatan Pelanggaran (${pelanggaranSnap.docs.length})',
+              style: pw.TextStyle(
+                  fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 6),
+          pw.TableHelper.fromTextArray(
+            headers: ['Nama Siswa', 'Jenis', 'Poin', 'Deskripsi'],
+            data: pelanggaranSnap.docs.map((doc) {
+              final d = doc.data();
+              return [
+                d['student_name'] ?? '-',
+                d['jenis'] ?? '-',
+                '${d['poin'] ?? 0}',
+                d['deskripsi'] ?? '-',
+              ];
+            }).toList(),
+            headerStyle:
+                pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            cellPadding: const pw.EdgeInsets.all(4),
+          ),
+        ],
+      ],
+    ));
+
+    if (context.mounted) {
+      await Printing.layoutPdf(
+        onLayout: (_) async => pdf.save(),
+        name: 'Laporan_Kelas_${kelas}_${now.year}${now.month}${now.day}.pdf',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -120,6 +247,18 @@ class _WaliHomeTab extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const AlertSystemWidget(),
+          const SizedBox(height: 16),
+          // Export PDF button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.waliKelasColor),
+              onPressed: () => _exportPdf(context, kelas, user?.name ?? 'Wali Kelas'),
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: const Text('Export Laporan Kelas (PDF)'),
+            ),
+          ),
           const SizedBox(height: 16),
           const Text('Daftar Siswa', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 8),
@@ -381,7 +520,7 @@ class _WaliBukuPenghubungTab extends StatelessWidget {
               if (ctx.mounted) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('✅ Pesan berhasil dikirim!'), backgroundColor: AppTheme.success),
+                  const SnackBar(content: Text('âœ… Pesan berhasil dikirim!'), backgroundColor: AppTheme.success),
                 );
               }
             },
