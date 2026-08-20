@@ -25,6 +25,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
     final pages = [
       const _TeacherHomeTab(),
       const _TeacherMateriTab(),
+      const _TeacherKuisTab(),
       const _TeacherAbsensiTab(),
       const _TeacherProfilTab(),
     ];
@@ -49,6 +50,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Beranda'),
           NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: 'Materi'),
+          NavigationDestination(icon: Icon(Icons.quiz_outlined), label: 'Kuis'),
           NavigationDestination(icon: Icon(Icons.how_to_reg_outlined), label: 'Absensi'),
           NavigationDestination(icon: Icon(Icons.person_outlined), label: 'Profil'),
         ],
@@ -395,6 +397,129 @@ class _AbsensiRowState extends State<_AbsensiRow> {
             DropdownMenuItem(value: 'sakit', child: Text('Sakit')),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _TeacherKuisTab extends StatelessWidget {
+  const _TeacherKuisTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _createKuis(context),
+        icon: const Icon(Icons.add),
+        label: const Text('Buat Kuis'),
+        backgroundColor: AppTheme.guruMapelColor,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection(FirebaseConstants.kuisCollection)
+            .where('guru_id', isEqualTo: uid)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError || !snapshot.hasData) {
+            return const Center(child: Text('Belum ada kuis dibuat.'));
+          }
+          final docs = snapshot.data!.docs;
+          if (docs.isEmpty) {
+            return const Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.quiz_outlined, size: 64, color: Colors.grey),
+                SizedBox(height: 12),
+                Text('Belum ada kuis. Klik tombol + untuk buat kuis baru.'),
+              ]),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(12),
+            itemCount: docs.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, i) {
+              final d = docs[i].data() as Map<String, dynamic>;
+              final deadline = (d['deadline'] as Timestamp?)?.toDate();
+              return Card(
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: AppTheme.guruMapelColor,
+                    child: Icon(Icons.quiz, color: Colors.white),
+                  ),
+                  title: Text(d['judul'] ?? ''),
+                  subtitle: Text(
+                    'Kelas: ${d['kelas'] ?? '-'}'
+                    '${deadline != null ? '\nDeadline: ${deadline.day}/${deadline.month}/${deadline.year}' : ''}',
+                  ),
+                  isThreeLine: deadline != null,
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
+                    onPressed: () => docs[i].reference.delete(),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _createKuis(BuildContext context) {
+    final judulCtrl = TextEditingController();
+    final kelasCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Buat Kuis Baru'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: judulCtrl,
+              decoration: const InputDecoration(labelText: 'Judul Kuis'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: kelasCtrl,
+              decoration: const InputDecoration(labelText: 'Kelas', hintText: 'XII-TKJ-1'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () async {
+              final uid = FirebaseAuth.instance.currentUser?.uid;
+              final auth = context.read<AuthProvider>();
+              await FirebaseFirestore.instance
+                  .collection(FirebaseConstants.kuisCollection)
+                  .add({
+                'judul': judulCtrl.text.trim(),
+                'kelas': kelasCtrl.text.trim(),
+                'mapel': auth.user?.mapel ?? '',
+                'guru_id': uid,
+                'guru_name': auth.user?.name ?? '',
+                'deadline': Timestamp.fromDate(DateTime.now().add(const Duration(days: 7))),
+                'created_at': FieldValue.serverTimestamp(),
+              });
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ Kuis berhasil dibuat!'),
+                    backgroundColor: AppTheme.success,
+                  ),
+                );
+              }
+            },
+            child: const Text('Buat'),
+          ),
+        ],
       ),
     );
   }

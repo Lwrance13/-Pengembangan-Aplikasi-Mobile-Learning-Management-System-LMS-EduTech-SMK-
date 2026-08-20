@@ -154,9 +154,7 @@ class _ActiveCaseList extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(FirebaseConstants.konselingCollection)
-          .where('status', whereIn: ['pending', 'approved'])
-          .orderBy('tanggal', descending: true)
-          .limit(20)
+          .where('status', whereIn: ['pending', 'approved']).limit(20)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError || !snapshot.hasData) return const SizedBox.shrink();

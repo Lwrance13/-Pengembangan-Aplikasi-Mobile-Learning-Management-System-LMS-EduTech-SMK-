@@ -58,6 +58,27 @@ class _WaliDashboardPageState extends State<WaliDashboardPage> {
 class _WaliHomeTab extends StatelessWidget {
   const _WaliHomeTab();
 
+  void _showStudentDetail(BuildContext context, Map<String, dynamic> d) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(d['name'] ?? 'Siswa'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _DetailRow('NISN', d['nisn'] ?? '-'),
+            _DetailRow('Email', d['email'] ?? '-'),
+            _DetailRow('Kelas', d['kelas'] ?? '-'),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -122,7 +143,7 @@ class _WaliHomeTab extends StatelessWidget {
                       title: Text(d['name'] ?? ''),
                       subtitle: Text('NISN: ${d['nisn'] ?? '-'}'),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                      onTap: () {},
+                      onTap: () => _showStudentDetail(context, d),
                     ),
                   );
                 }).toList(),
@@ -284,6 +305,26 @@ class _WaliInfoRow extends StatelessWidget {
           SizedBox(width: 80, child: Text(label, style: const TextStyle(color: AppTheme.textSecondary))),
           const Text(': '),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _DetailRow(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          SizedBox(width: 60, child: Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13))),
+          const Text(': '),
+          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13))),
         ],
       ),
     );

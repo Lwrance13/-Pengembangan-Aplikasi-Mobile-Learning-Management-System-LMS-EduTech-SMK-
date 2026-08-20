@@ -19,9 +19,7 @@ class PelanggaranSiswaPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection(FirebaseConstants.pelanggaranCollection)
-            .where('student_id', isEqualTo: uid)
-            .orderBy('tanggal', descending: true)
-            .snapshots(),
+            .where('student_id', isEqualTo: uid).snapshots(),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

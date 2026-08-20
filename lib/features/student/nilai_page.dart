@@ -18,9 +18,7 @@ class NilaiPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection(FirebaseConstants.nilaiCollection)
-            .where('student_id', isEqualTo: uid)
-            .orderBy('tanggal', descending: true)
-            .snapshots(),
+            .where('student_id', isEqualTo: uid).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

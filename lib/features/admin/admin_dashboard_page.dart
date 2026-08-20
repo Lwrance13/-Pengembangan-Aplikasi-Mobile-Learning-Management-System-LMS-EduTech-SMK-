@@ -339,14 +339,10 @@ class _AdminUserManagementTabState extends State<_AdminUserManagementTab> {
           child: StreamBuilder<QuerySnapshot>(
             stream: _filterRole == 'ALL'
                 ? FirebaseFirestore.instance
-                    .collection(FirebaseConstants.usersCollection)
-                    .orderBy('name')
-                    .snapshots()
+                    .collection(FirebaseConstants.usersCollection).snapshots()
                 : FirebaseFirestore.instance
                     .collection(FirebaseConstants.usersCollection)
-                    .where('role', isEqualTo: _filterRole)
-                    .orderBy('name')
-                    .snapshots(),
+                    .where('role', isEqualTo: _filterRole).snapshots(),
             builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -595,7 +591,6 @@ class _AdminPelanggaranTab extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(FirebaseConstants.pelanggaranCollection)
-          .orderBy('tanggal', descending: true)
           .snapshots(),
       builder: (context, snap) {
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());

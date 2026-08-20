@@ -152,9 +152,7 @@ class _StudentHomeTab extends StatelessWidget {
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection(FirebaseConstants.tugasCollection)
-                .where('kelas', isEqualTo: user?.kelas)
-                .orderBy('deadline')
-                .limit(5)
+                .where('kelas', isEqualTo: user?.kelas).limit(5)
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError || !snapshot.hasData) return const LinearProgressIndicator();
@@ -198,6 +196,44 @@ class _StudentHomeTab extends StatelessWidget {
 class _StudentMateriTab extends StatelessWidget {
   const _StudentMateriTab();
 
+  void _openUrl(BuildContext context, String url, String title) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title, style: const TextStyle(fontSize: 15)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Link materi:'),
+            const SizedBox(height: 8),
+            SelectableText(
+              url,
+              style: const TextStyle(color: AppTheme.primary, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup')),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              // Copy to clipboard & show snackbar
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Salin link di atas dan buka di browser'),
+                  action: SnackBarAction(label: 'OK', onPressed: () {}),
+                ),
+              );
+            },
+            icon: const Icon(Icons.open_in_new, size: 16),
+            label: const Text('Buka Link'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
@@ -237,8 +273,20 @@ class _StudentMateriTab extends StatelessWidget {
                 ),
                 title: Text(d['judul'] ?? ''),
                 subtitle: Text('${d['mapel']} • ${d['guru_name']}'),
-                trailing: const Icon(Icons.download_outlined),
-                onTap: () {},
+                trailing: Icon(
+                  d['file_url'] != null ? Icons.open_in_new : Icons.lock_outline,
+                  color: d['file_url'] != null ? AppTheme.primary : Colors.grey,
+                ),
+                onTap: () {
+                  final url = d['file_url'] as String?;
+                  if (url != null && url.isNotEmpty) {
+                    _openUrl(context, url, d['judul'] ?? 'Materi');
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('File tidak tersedia.')),
+                    );
+                  }
+                },
               ),
             );
           },
@@ -269,9 +317,7 @@ class _StudentAbsensiTab extends StatelessWidget {
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection(FirebaseConstants.absensiCollection)
-                .where('student_id', isEqualTo: uid)
-                .orderBy('tanggal', descending: true)
-                .limit(30)
+                .where('student_id', isEqualTo: uid).limit(30)
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {

@@ -147,9 +147,7 @@ class _BkBookingPageState extends State<BkBookingPage> {
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection(FirebaseConstants.konselingCollection)
-                  .where('student_id', isEqualTo: uid)
-                  .orderBy('tanggal', descending: true)
-                  .snapshots(),
+                  .where('student_id', isEqualTo: uid).snapshots(),
               builder: (context, snap) {
                 if (!snap.hasData || snap.data!.docs.isEmpty) {
                   return const Card(child: ListTile(title: Text('Belum ada riwayat booking.')));

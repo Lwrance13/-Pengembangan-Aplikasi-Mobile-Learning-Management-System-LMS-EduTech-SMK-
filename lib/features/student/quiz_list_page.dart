@@ -20,9 +20,7 @@ class QuizListPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection(FirebaseConstants.kuisCollection)
-            .where('kelas', isEqualTo: kelas)
-            .orderBy('created_at', descending: true)
-            .snapshots(),
+            .where('kelas', isEqualTo: kelas).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator()); if (snapshot.hasError || !snapshot.hasData) return const Center(child: Text("Belum ada data.", style: TextStyle(color: Color(0xFF6B7280))));
           final docs = snapshot.data!.docs;
