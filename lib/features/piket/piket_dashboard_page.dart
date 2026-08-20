@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
@@ -7,8 +7,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../core/services/notification_trigger_service.dart';
 import '../shared/notification_list_page.dart';
-import '../auth/login_page.dart';
-import 'quick_scan_page.dart';
 
 class PiketDashboardPage extends StatefulWidget {
   const PiketDashboardPage({super.key});
@@ -22,15 +20,15 @@ class _PiketDashboardPageState extends State<PiketDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = const [
-      _PiketHomeTab(),
-      QuickScanPage(),
-      _PiketCatatanTab(),
-      _PiketProfilTab(),
+    final pages = [
+      const _PiketHomeTab(),
+      const QuickScanPage(),
+      const _PiketCatatanTab(),
+      const _PiketProfilTab(),
     ];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('EduTech SMK — Guru Piket'),
+        title: const Text('EduTech SMK â€” Guru Piket'),
         backgroundColor: AppTheme.guruPiketColor,
         actions: [
           IconButton(
@@ -149,7 +147,7 @@ class _PiketHomeTab extends StatelessWidget {
                     child: ListTile(
                       leading: const Icon(Icons.access_time, color: AppTheme.warning),
                       title: Text(d['student_name'] ?? ''),
-                      subtitle: Text('Kelas: ${d['kelas'] ?? '-'} • ${d['jam'] ?? ''}'),
+                      subtitle: Text('Kelas: ${d['kelas'] ?? '-'} â€¢ ${d['jam'] ?? ''}'),
                     ),
                   );
                 }).toList(),
@@ -189,9 +187,9 @@ class _PiketHomeTab extends StatelessWidget {
               final msg = msgCtrl.text.trim();
               if (msg.isEmpty) return;
               final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-              // 🔔 Broadcast via NotificationTriggerService (kirim ke semua user)
+              // ðŸ”” Broadcast via NotificationTriggerService (kirim ke semua user)
               await NotificationTriggerService.broadcastDarurat(
-                judul: '⚠️ Pengumuman Darurat',
+                judul: 'âš ï¸ Pengumuman Darurat',
                 pesan: msg,
                 senderId: uid,
               );
@@ -346,9 +344,7 @@ class _PiketProfilTab extends StatelessWidget {
             onPressed: () async {
               await auth.signOut();
               if (context.mounted) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                );
+                Navigator.of(context).popUntil((route) => route.isFirst);
               }
             },
             icon: const Icon(Icons.logout),
@@ -358,5 +354,132 @@ class _PiketProfilTab extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+
+class QuickScanPage extends StatefulWidget {
+  const QuickScanPage({super.key});
+
+  @override
+  State<QuickScanPage> createState() => _QuickScanPageState();
+}
+
+class _QuickScanPageState extends State<QuickScanPage> {
+  bool _isProcessing = false;
+  String? _resultMessage;
+  bool _resultSuccess = false;
+
+  Future<void> _processNisn(String nisn) async {
+    if (_isProcessing || nisn.isEmpty) return;
+    setState(() => _isProcessing = true);
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection(FirebaseConstants.usersCollection)
+          .where('nisn', isEqualTo: nisn)
+          .limit(1)
+          .get();
+      if (snap.docs.isEmpty) {
+        setState(() { _resultMessage = 'NISN $nisn tidak ditemukan!'; _resultSuccess = false; _isProcessing = false; });
+        return;
+      }
+      final studentDoc = snap.docs.first;
+      final studentData = studentDoc.data();
+      await FirebaseFirestore.instance.collection(FirebaseConstants.absensiCollection).add({
+        'student_id': studentDoc.id,
+        'student_name': studentData['name'],
+        'kelas': studentData['kelas'],
+        'nisn': nisn,
+        'status': 'hadir',
+        'tanggal': Timestamp.fromDate(DateTime.now()),
+        'piket_id': FirebaseAuth.instance.currentUser?.uid,
+        'scan_type': 'manual',
+        'mapel': 'PIKET',
+      });
+      setState(() {
+        _resultMessage = '? ${studentData['name']} — Kelas ${studentData['kelas']}\nAbsensi berhasil dicatat!';
+        _resultSuccess = true; _isProcessing = false;
+      });
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _resultMessage = null);
+      });
+    } catch (e) {
+      setState(() { _resultMessage = 'Error: $e'; _resultSuccess = false; _isProcessing = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Container(
+            height: 160, width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.guruPiketColor.withValues(alpha: 0.4), width: 2),
+            ),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(Icons.qr_code_2, size: 64, color: AppTheme.guruPiketColor),
+              const SizedBox(height: 8),
+              const Text('Input NISN untuk absensi cepat', style: TextStyle(color: AppTheme.textSecondary)),
+            ]),
+          ),
+          const SizedBox(height: 16),
+          if (_resultMessage != null) ...[
+            Container(
+              width: double.infinity, padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _resultSuccess ? AppTheme.success.withValues(alpha: 0.1) : AppTheme.danger.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _resultSuccess ? AppTheme.success : AppTheme.danger),
+              ),
+              child: Text(_resultMessage!, textAlign: TextAlign.center,
+                  style: TextStyle(color: _resultSuccess ? AppTheme.success : AppTheme.danger, fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(height: 16),
+          ],
+          const Text('Input NISN Manual:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const SizedBox(height: 8),
+          _NisnInput(onSubmit: _processNisn, isProcessing: _isProcessing),
+        ],
+      ),
+    );
+  }
+}
+
+class _NisnInput extends StatefulWidget {
+  final Function(String) onSubmit;
+  final bool isProcessing;
+  const _NisnInput({required this.onSubmit, required this.isProcessing});
+  @override State<_NisnInput> createState() => _NisnInputState();
+}
+class _NisnInputState extends State<_NisnInput> {
+  final _ctrl = TextEditingController();
+  @override void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Expanded(child: TextField(
+        controller: _ctrl, keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          hintText: 'Masukkan NISN siswa...', prefixIcon: const Icon(Icons.person_search),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        onSubmitted: (v) { if (v.trim().isNotEmpty) { widget.onSubmit(v.trim()); _ctrl.clear(); } },
+      )),
+      const SizedBox(width: 8),
+      ElevatedButton(
+        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.guruPiketColor,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15)),
+        onPressed: widget.isProcessing ? null : () {
+          if (_ctrl.text.trim().isNotEmpty) { widget.onSubmit(_ctrl.text.trim()); _ctrl.clear(); }
+        },
+        child: widget.isProcessing
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            : const Text('Cari'),
+      ),
+    ]);
   }
 }

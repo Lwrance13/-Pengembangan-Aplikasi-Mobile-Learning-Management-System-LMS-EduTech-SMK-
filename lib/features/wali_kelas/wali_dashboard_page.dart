@@ -5,7 +5,6 @@ import '../../core/services/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../shared/notification_list_page.dart';
-import '../auth/login_page.dart';
 import 'alert_system_widget.dart';
 
 class WaliDashboardPage extends StatefulWidget {
@@ -24,6 +23,7 @@ class _WaliDashboardPageState extends State<WaliDashboardPage> {
       _WaliHomeTab(),
       _WaliAbsensiTab(),
       _WaliPelanggaranTab(),
+      _WaliBukuPenghubungTab(),
       _WaliProfilTab(),
     ];
     return Scaffold(
@@ -48,6 +48,7 @@ class _WaliDashboardPageState extends State<WaliDashboardPage> {
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Beranda'),
           NavigationDestination(icon: Icon(Icons.how_to_reg_outlined), label: 'Absensi'),
           NavigationDestination(icon: Icon(Icons.warning_amber_outlined), label: 'Pelanggaran'),
+          NavigationDestination(icon: Icon(Icons.book_outlined), label: 'Buku'),
           NavigationDestination(icon: Icon(Icons.person_outlined), label: 'Profil'),
         ],
       ),
@@ -247,6 +248,152 @@ class _WaliPelanggaranTab extends StatelessWidget {
   }
 }
 
+class _WaliBukuPenghubungTab extends StatelessWidget {
+  const _WaliBukuPenghubungTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final kelas = auth.user?.kelas ?? '';
+    return Scaffold(
+      appBar: null,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _kirimPesan(context, auth.user?.name ?? 'Wali Kelas', kelas),
+        icon: const Icon(Icons.send),
+        label: const Text('Kirim Pesan'),
+        backgroundColor: AppTheme.waliKelasColor,
+      ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            color: AppTheme.waliKelasColor.withValues(alpha: 0.1),
+            child: const Row(
+              children: [
+                Icon(Icons.book, color: AppTheme.waliKelasColor),
+                SizedBox(width: 8),
+                Text('Buku Penghubung Digital',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.waliKelasColor)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection(FirebaseConstants.bukuPenghubungCollection)
+                  .where('kelas', isEqualTo: kelas)
+                  .snapshots(),
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final docs = snap.data?.docs ?? [];
+                if (docs.isEmpty) {
+                  return const Center(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.book_outlined, size: 64, color: Colors.grey),
+                      SizedBox(height: 12),
+                      Text('Belum ada pesan.\nKlik tombol + untuk kirim pesan ke orang tua.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppTheme.textSecondary)),
+                    ]),
+                  );
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: docs.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) {
+                    final d = docs[i].data() as Map<String, dynamic>;
+                    final ts = (d['timestamp'] as Timestamp?)?.toDate();
+                    return Card(
+                      child: ListTile(
+                        leading: const CircleAvatar(
+                          backgroundColor: AppTheme.waliKelasColor,
+                          child: Icon(Icons.mail_outline, color: Colors.white),
+                        ),
+                        title: Text(d['student_name'] ?? ''),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(d['pesan'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis),
+                            if (ts != null)
+                              Text('${ts.day}/${ts.month}/${ts.year}',
+                                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                          ],
+                        ),
+                        isThreeLine: true,
+                        trailing: Chip(
+                          label: Text(d['status'] ?? 'terkirim',
+                              style: const TextStyle(color: Colors.white, fontSize: 10)),
+                          backgroundColor: AppTheme.success,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _kirimPesan(BuildContext context, String waliName, String kelas) {
+    final namaCtrl = TextEditingController();
+    final pesanCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kirim Pesan ke Orang Tua'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: namaCtrl,
+                decoration: const InputDecoration(labelText: 'Nama Siswa')),
+            const SizedBox(height: 8),
+            TextField(controller: pesanCtrl, maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Pesan untuk Orang Tua',
+                  hintText: 'contoh: Kehadiran ananda perlu ditingkatkan...',
+                )),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.waliKelasColor),
+            onPressed: () async {
+              if (namaCtrl.text.trim().isEmpty || pesanCtrl.text.trim().isEmpty) return;
+              await FirebaseFirestore.instance
+                  .collection(FirebaseConstants.bukuPenghubungCollection)
+                  .add({
+                'student_name': namaCtrl.text.trim(),
+                'kelas': kelas,
+                'pesan': pesanCtrl.text.trim(),
+                'wali_name': waliName,
+                'status': 'terkirim',
+                'timestamp': FieldValue.serverTimestamp(),
+              });
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('✅ Pesan berhasil dikirim!'), backgroundColor: AppTheme.success),
+                );
+              }
+            },
+            icon: const Icon(Icons.send),
+            label: const Text('Kirim'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _WaliProfilTab extends StatelessWidget {
   const _WaliProfilTab();
 
@@ -276,9 +423,7 @@ class _WaliProfilTab extends StatelessWidget {
             onPressed: () async {
               await auth.signOut();
               if (context.mounted) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                );
+                Navigator.of(context).popUntil((route) => route.isFirst);
               }
             },
             icon: const Icon(Icons.logout),

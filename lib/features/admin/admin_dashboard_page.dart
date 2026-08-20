@@ -6,7 +6,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../core/constants/roles.dart';
 import '../../core/services/seed_data_service.dart';
-import '../auth/login_page.dart';
 import '../shared/notification_list_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
@@ -588,49 +587,131 @@ class _AdminPelanggaranTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection(FirebaseConstants.pelanggaranCollection)
-          .snapshots(),
-      builder: (context, snap) {
-        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-        final docs = snap.data!.docs;
-        if (docs.isEmpty) return const Center(child: Text('Tidak ada catatan pelanggaran.'));
-        return ListView.separated(
-          padding: const EdgeInsets.all(12),
-          itemCount: docs.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 6),
-          itemBuilder: (context, i) {
-            final d = docs[i].data() as Map<String, dynamic>;
-            final poin = d['poin'] ?? 0;
-            final tanggal = (d['tanggal'] as Timestamp?)?.toDate();
-            return Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: poin >= 80 ? AppTheme.danger : poin >= 50 ? AppTheme.warning : AppTheme.textSecondary,
-                  child: Text('$poin', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _addPelanggaran(context),
+        icon: const Icon(Icons.add),
+        label: const Text('Tambah'),
+        backgroundColor: AppTheme.adminColor,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection(FirebaseConstants.pelanggaranCollection)
+            .snapshots(),
+        builder: (context, snap) {
+          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+          final docs = snap.data!.docs;
+          if (docs.isEmpty) return const Center(child: Text('Tidak ada catatan pelanggaran.'));
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 80),
+            itemCount: docs.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 6),
+            itemBuilder: (context, i) {
+              final d = docs[i].data() as Map<String, dynamic>;
+              final poin = d['poin'] ?? 0;
+              final tanggal = (d['tanggal'] as Timestamp?)?.toDate();
+              return Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: poin >= 80 ? AppTheme.danger : poin >= 50 ? AppTheme.warning : AppTheme.textSecondary,
+                    child: Text('$poin', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                  title: Text(d['student_name'] ?? ''),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(d['deskripsi'] ?? ''),
+                      Text(
+                        '${d['jenis'] ?? ''} • ${d['kelas'] ?? ''} • ${tanggal != null ? '${tanggal.day}/${tanggal.month}/${tanggal.year}' : '-'}',
+                        style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ),
+                  isThreeLine: true,
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
+                    onPressed: () => docs[i].reference.delete(),
+                  ),
                 ),
-                title: Text(d['student_name'] ?? ''),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(d['deskripsi'] ?? ''),
-                    Text(
-                      '${d['jenis'] ?? ''} • ${d['kelas'] ?? ''} • ${tanggal != null ? '${tanggal.day}/${tanggal.month}/${tanggal.year}' : '-'}',
-                      style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-                    ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _addPelanggaran(BuildContext context) {
+    final namaCtrl = TextEditingController();
+    final kelasCtrl = TextEditingController();
+    final deskripsiCtrl = TextEditingController();
+    final poinCtrl = TextEditingController();
+    String jenis = 'Tata Tertib';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('Tambah Pelanggaran'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: namaCtrl,
+                    decoration: const InputDecoration(labelText: 'Nama Siswa')),
+                const SizedBox(height: 8),
+                TextField(controller: kelasCtrl,
+                    decoration: const InputDecoration(labelText: 'Kelas')),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: jenis,
+                  items: const [
+                    DropdownMenuItem(value: 'Tata Tertib', child: Text('Tata Tertib')),
+                    DropdownMenuItem(value: 'Akademik', child: Text('Akademik')),
+                    DropdownMenuItem(value: 'Sosial', child: Text('Sosial')),
+                    DropdownMenuItem(value: 'Disiplin', child: Text('Disiplin')),
                   ],
+                  onChanged: (v) => setS(() => jenis = v!),
+                  decoration: const InputDecoration(labelText: 'Jenis'),
                 ),
-                isThreeLine: true,
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
-                  onPressed: () => docs[i].reference.delete(),
+                const SizedBox(height: 8),
+                TextField(controller: deskripsiCtrl, maxLines: 2,
+                    decoration: const InputDecoration(labelText: 'Deskripsi Pelanggaran')),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: poinCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                      labelText: 'Poin Pelanggaran (0–100)', hintText: '10'),
                 ),
-              ),
-            );
-          },
-        );
-      },
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.adminColor),
+              onPressed: () async {
+                final poin = int.tryParse(poinCtrl.text.trim()) ?? 0;
+                if (namaCtrl.text.trim().isEmpty) return;
+                await FirebaseFirestore.instance
+                    .collection(FirebaseConstants.pelanggaranCollection)
+                    .add({
+                  'student_name': namaCtrl.text.trim(),
+                  'kelas': kelasCtrl.text.trim(),
+                  'jenis': jenis,
+                  'deskripsi': deskripsiCtrl.text.trim(),
+                  'poin': poin,
+                  'tanggal': FieldValue.serverTimestamp(),
+                  'input_by': 'admin',
+                });
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -677,9 +758,7 @@ class _AdminProfilTab extends StatelessWidget {
               onPressed: () async {
                 await auth.signOut();
                 if (context.mounted) {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                  );
+                  Navigator.of(context).popUntil((route) => route.isFirst);
                 }
               },
               icon: const Icon(Icons.logout),

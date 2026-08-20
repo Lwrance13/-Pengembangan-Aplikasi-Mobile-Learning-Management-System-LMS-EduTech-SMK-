@@ -7,7 +7,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../shared/notification_list_page.dart';
 import '../shared/chat_room_page.dart';
-import '../auth/login_page.dart';
 import 'case_tracking_page.dart';
 
 class BkDashboardPage extends StatefulWidget {
@@ -304,9 +303,7 @@ class _BkProfilTab extends StatelessWidget {
             onPressed: () async {
               await auth.signOut();
               if (context.mounted) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                );
+                Navigator.of(context).popUntil((route) => route.isFirst);
               }
             },
             icon: const Icon(Icons.logout),

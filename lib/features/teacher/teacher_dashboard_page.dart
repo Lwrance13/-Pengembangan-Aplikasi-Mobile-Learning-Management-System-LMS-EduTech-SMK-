@@ -7,8 +7,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/firebase_constants.dart';
 import '../../core/services/notification_trigger_service.dart';
 import '../shared/notification_list_page.dart';
-import '../auth/login_page.dart';
 import 'upload_material_page.dart';
+import 'kuis_questions_page.dart';
+import 'tugas_submissions_page.dart';
 
 class TeacherDashboardPage extends StatefulWidget {
   const TeacherDashboardPage({super.key});
@@ -26,6 +27,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
       const _TeacherHomeTab(),
       const _TeacherMateriTab(),
       const _TeacherKuisTab(),
+      const _TeacherMonitoringTab(),
       const _TeacherAbsensiTab(),
       const _TeacherProfilTab(),
     ];
@@ -51,6 +53,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Beranda'),
           NavigationDestination(icon: Icon(Icons.menu_book_outlined), label: 'Materi'),
           NavigationDestination(icon: Icon(Icons.quiz_outlined), label: 'Kuis'),
+          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), label: 'Monitoring'),
           NavigationDestination(icon: Icon(Icons.how_to_reg_outlined), label: 'Absensi'),
           NavigationDestination(icon: Icon(Icons.person_outlined), label: 'Profil'),
         ],
@@ -144,7 +147,19 @@ class _TeacherHomeTab extends StatelessWidget {
                       leading: const Icon(Icons.assignment_outlined, color: AppTheme.guruMapelColor),
                       title: Text(d['judul'] ?? ''),
                       subtitle: Text(d['kelas'] ?? ''),
-                      trailing: Text('${d['submission_count'] ?? 0} Submit'),
+                      trailing: TextButton.icon(
+                        icon: const Icon(Icons.people_outline, size: 16),
+                        label: Text('${d['submission_count'] ?? 0}'),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TugasSubmissionsPage(
+                              tugasId: doc.id,
+                              tugasJudul: d['judul'] ?? '',
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   );
                 }).toList(),
@@ -456,9 +471,27 @@ class _TeacherKuisTab extends StatelessWidget {
                     '${deadline != null ? '\nDeadline: ${deadline.day}/${deadline.month}/${deadline.year}' : ''}',
                   ),
                   isThreeLine: deadline != null,
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
-                    onPressed: () => docs[i].reference.delete(),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_note, color: AppTheme.guruMapelColor),
+                        tooltip: 'Kelola Soal',
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => KuisQuestionsPage(
+                              kuisId: docs[i].id,
+                              kuisJudul: d['judul'] ?? '',
+                            ),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
+                        onPressed: () => docs[i].reference.delete(),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -525,6 +558,210 @@ class _TeacherKuisTab extends StatelessWidget {
   }
 }
 
+class _TeacherMonitoringTab extends StatelessWidget {
+  const _TeacherMonitoringTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final mapel = auth.user?.mapel ?? '';
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Statistik Kelas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          const SizedBox(height: 12),
+          // Statistik absensi
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection(FirebaseConstants.absensiCollection)
+                .where('guru_id', isEqualTo: uid)
+                .snapshots(),
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) return const LinearProgressIndicator();
+              final docs = snap.data?.docs ?? [];
+              final hadir = docs.where((d) => (d.data() as Map)['status'] == 'hadir').length;
+              final alpha = docs.where((d) => (d.data() as Map)['status'] == 'alpha').length;
+              final total = docs.length;
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('📊 Absensi Kelas Saya', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _StatBox('Total', total, AppTheme.primary),
+                          _StatBox('Hadir', hadir, AppTheme.success),
+                          _StatBox('Alpha', alpha, AppTheme.danger),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          // Input nilai manual
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Input Nilai Siswa', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.guruMapelColor),
+                onPressed: () => _inputNilai(context, mapel, uid),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Input Nilai'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Daftar nilai yang sudah diinput
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection(FirebaseConstants.nilaiCollection)
+                .where('guru_id', isEqualTo: uid)
+                .snapshots(),
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) return const LinearProgressIndicator();
+              final docs = snap.data?.docs ?? [];
+              if (docs.isEmpty) {
+                return const Card(child: ListTile(
+                  leading: Icon(Icons.grade_outlined),
+                  title: Text('Belum ada nilai diinput.'),
+                ));
+              }
+              return Column(
+                children: docs.take(10).map((doc) {
+                  final d = doc.data() as Map<String, dynamic>;
+                  final nilai = (d['nilai'] as num?)?.toDouble() ?? 0;
+                  final Color c;
+                  if (nilai >= 80) { c = AppTheme.success; }
+                  else if (nilai >= 60) { c = AppTheme.warning; }
+                  else { c = AppTheme.danger; }
+                  return Card(
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: c,
+                        child: Text('${nilai.round()}',
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                      title: Text(d['student_name'] ?? ''),
+                      subtitle: Text('${d['judul'] ?? ''} • ${d['jenis'] ?? ''}'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 18),
+                        onPressed: () => doc.reference.delete(),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _inputNilai(BuildContext context, String mapel, String? uid) {
+    final namaCtrl = TextEditingController();
+    final studentIdCtrl = TextEditingController();
+    final judulCtrl = TextEditingController();
+    final nilaiCtrl = TextEditingController();
+    String jenis = 'tugas';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Input Nilai Siswa'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: namaCtrl,
+                    decoration: const InputDecoration(labelText: 'Nama Siswa')),
+                const SizedBox(height: 8),
+                TextField(controller: judulCtrl,
+                    decoration: const InputDecoration(labelText: 'Judul Tugas/Kuis')),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: jenis,
+                  items: const [
+                    DropdownMenuItem(value: 'tugas', child: Text('Tugas')),
+                    DropdownMenuItem(value: 'kuis', child: Text('Kuis')),
+                    DropdownMenuItem(value: 'ulangan', child: Text('Ulangan')),
+                    DropdownMenuItem(value: 'ujian', child: Text('Ujian')),
+                  ],
+                  onChanged: (v) => setState(() => jenis = v!),
+                  decoration: const InputDecoration(labelText: 'Jenis'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: nilaiCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Nilai (0-100)',
+                    hintText: '85',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            ElevatedButton(
+              onPressed: () async {
+                final nilai = double.tryParse(nilaiCtrl.text.trim());
+                if (nilai == null || nilai < 0 || nilai > 100) return;
+                await FirebaseFirestore.instance
+                    .collection(FirebaseConstants.nilaiCollection)
+                    .add({
+                  'student_name': namaCtrl.text.trim(),
+                  'student_id': studentIdCtrl.text.trim(),
+                  'judul': judulCtrl.text.trim(),
+                  'jenis': jenis,
+                  'mapel': mapel,
+                  'nilai': nilai,
+                  'guru_id': uid,
+                  'tanggal': FieldValue.serverTimestamp(),
+                });
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatBox extends StatelessWidget {
+  final String label;
+  final int value;
+  final Color color;
+  const _StatBox(this.label, this.value, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text('$value', style: TextStyle(color: color, fontSize: 28, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
+
 class _TeacherProfilTab extends StatelessWidget {
   const _TeacherProfilTab();
 
@@ -554,9 +791,7 @@ class _TeacherProfilTab extends StatelessWidget {
             onPressed: () async {
               await auth.signOut();
               if (context.mounted) {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                );
+                Navigator.of(context).popUntil((route) => route.isFirst);
               }
             },
             icon: const Icon(Icons.logout),
