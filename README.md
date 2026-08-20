@@ -3,7 +3,16 @@
 **Mata Kuliah: Mobile Cross-Platform Development**
 
 ---
+## 👥 Kelompok 8
 
+| No | Nama |
+|----|------|
+| 1 | MUH. YAHYA AL-QADRI |
+| 2 | MUH. KHAIDIR NUR |
+| 3 | NURSYAHLAN RUSLAN |
+| 4 | MUSTAPIAH |
+
+---
 ## Deskripsi Proyek
 
 Aplikasi mobile berbasis cross-platform untuk mendukung proses pembelajaran di lingkungan SMK. Dibangun menggunakan **Flutter** dengan backend **Google Firebase**.
