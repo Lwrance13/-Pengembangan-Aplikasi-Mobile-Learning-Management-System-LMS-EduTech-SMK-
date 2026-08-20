@@ -2,13 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/constants/roles.dart';
-import '../student/student_dashboard_page.dart';
-import '../teacher/teacher_dashboard_page.dart';
-import '../wali_kelas/wali_dashboard_page.dart';
-import '../bk/bk_dashboard_page.dart';
-import '../piket/piket_dashboard_page.dart';
-import '../admin/admin_dashboard_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -33,39 +26,8 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthProvider>();
-    final success = await auth.signIn(_emailCtrl.text.trim(), _passCtrl.text);
-    if (success && mounted) {
-      _navigateByRole(auth.user!.role);
-    }
-  }
-
-  void _navigateByRole(String role) {
-    Widget destination;
-    switch (role) {
-      case AppRoles.siswa:
-        destination = const StudentDashboardPage();
-        break;
-      case AppRoles.guruMapel:
-        destination = const TeacherDashboardPage();
-        break;
-      case AppRoles.waliKelas:
-        destination = const WaliDashboardPage();
-        break;
-      case AppRoles.guruBk:
-        destination = const BkDashboardPage();
-        break;
-      case AppRoles.guruPiket:
-        destination = const PiketDashboardPage();
-        break;
-      case AppRoles.admin:
-        destination = const AdminDashboardPage();
-        break;
-      default:
-        destination = const LoginPage();
-    }
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => destination),
-    );
+    // _AuthGate watches auth.isLoggedIn dan akan otomatis redirect ke dashboard
+    await auth.signIn(_emailCtrl.text.trim(), _passCtrl.text);
   }
 
   @override

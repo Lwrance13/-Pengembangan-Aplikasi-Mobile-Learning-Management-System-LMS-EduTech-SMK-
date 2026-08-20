@@ -951,9 +951,6 @@ class _AdminProfilTab extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: () async {
                 await auth.signOut();
-                if (context.mounted) {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                }
               },
               icon: const Icon(Icons.logout),
               label: const Text('Keluar'),

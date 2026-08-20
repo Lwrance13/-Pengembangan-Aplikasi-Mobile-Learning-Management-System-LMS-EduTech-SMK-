@@ -30,7 +30,7 @@ class _PiketDashboardPageState extends State<PiketDashboardPage> {
     ];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('EduTech SMK — Guru Piket'),
+        title: const Text('EduTech SMK � Guru Piket'),
         backgroundColor: AppTheme.guruPiketColor,
         actions: [
           IconButton(
@@ -149,7 +149,7 @@ class _PiketHomeTab extends StatelessWidget {
                     child: ListTile(
                       leading: const Icon(Icons.access_time, color: AppTheme.warning),
                       title: Text(d['student_name'] ?? ''),
-                      subtitle: Text('Kelas: ${d['kelas'] ?? '-'} â€¢ ${d['jam'] ?? ''}'),
+                      subtitle: Text('Kelas: ${d['kelas'] ?? '-'} • ${d['jam'] ?? ''}'),
                     ),
                   );
                 }).toList(),
@@ -189,9 +189,9 @@ class _PiketHomeTab extends StatelessWidget {
               final msg = msgCtrl.text.trim();
               if (msg.isEmpty) return;
               final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-              // 🔔 Broadcast via NotificationTriggerService (kirim ke semua user)
+              // ?? Broadcast via NotificationTriggerService (kirim ke semua user)
               await NotificationTriggerService.broadcastDarurat(
-                judul: '⚠️ Pengumuman Darurat',
+                judul: '?? Pengumuman Darurat',
                 pesan: msg,
                 senderId: uid,
               );
@@ -345,9 +345,6 @@ class _PiketProfilTab extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: () async {
               await auth.signOut();
-              if (context.mounted) {
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              }
             },
             icon: const Icon(Icons.logout),
             label: const Text('Keluar'),
@@ -426,7 +423,7 @@ class _QuickScanPageState extends State<QuickScanPage> {
         'mapel': 'PIKET',
       });
       setState(() {
-        _resultMessage = '✅ ${studentData['name']} — Kelas ${studentData['kelas']}\nAbsensi berhasil dicatat!';
+        _resultMessage = '? ${studentData['name']} � Kelas ${studentData['kelas']}\nAbsensi berhasil dicatat!';
         _resultSuccess = true; _isProcessing = false;
       });
       Future.delayed(const Duration(seconds: 4), () {

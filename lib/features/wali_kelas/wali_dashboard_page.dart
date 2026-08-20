@@ -31,7 +31,7 @@ class _WaliDashboardPageState extends State<WaliDashboardPage> {
     ];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('EduTech SMK â€” Wali Kelas'),
+        title: const Text('EduTech SMK — Wali Kelas'),
         backgroundColor: AppTheme.waliKelasColor,
         actions: [
           IconButton(
@@ -121,7 +121,7 @@ class _WaliHomeTab extends StatelessWidget {
             style: const pw.TextStyle(fontSize: 12)),
         pw.SizedBox(height: 16),
 
-        // â”€â”€ Daftar Siswa â”€â”€
+        // ── Daftar Siswa ──
         pw.Text('Daftar Siswa (${siswaSnap.docs.length} siswa)',
             style: pw.TextStyle(
                 fontSize: 14, fontWeight: pw.FontWeight.bold)),
@@ -143,7 +143,7 @@ class _WaliHomeTab extends StatelessWidget {
         ),
         pw.SizedBox(height: 16),
 
-        // â”€â”€ Rekap Absensi â”€â”€
+        // ── Rekap Absensi ──
         pw.Text('Rekap Absensi Kelas',
             style: pw.TextStyle(
                 fontSize: 14, fontWeight: pw.FontWeight.bold)),
@@ -173,7 +173,7 @@ class _WaliHomeTab extends StatelessWidget {
         }(),
         pw.SizedBox(height: 16),
 
-        // â”€â”€ Catatan Pelanggaran â”€â”€
+        // ── Catatan Pelanggaran ──
         if (pelanggaranSnap.docs.isNotEmpty) ...[
           pw.Text(
               'Catatan Pelanggaran (${pelanggaranSnap.docs.length})',
@@ -398,7 +398,7 @@ class _WaliPelanggaranTab extends StatelessWidget {
                     child: Text('$poin', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                   title: Text(d['student_name'] ?? ''),
-                  subtitle: Text('${d['jenis'] ?? ''} • ${d['deskripsi'] ?? ''}'),
+                  subtitle: Text('${d['jenis'] ?? ''} � ${d['deskripsi'] ?? ''}'),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 18),
                     onPressed: () => docs[i].reference.delete(),
@@ -448,7 +448,7 @@ class _WaliPelanggaranTab extends StatelessWidget {
                 TextField(
                   controller: poinCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Poin (0–100)'),
+                  decoration: const InputDecoration(labelText: 'Poin (0�100)'),
                 ),
               ],
             ),
@@ -616,7 +616,7 @@ class _WaliBukuPenghubungTab extends StatelessWidget {
               if (ctx.mounted) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('âœ… Pesan berhasil dikirim!'), backgroundColor: AppTheme.success),
+                  const SnackBar(content: Text('✅ Pesan berhasil dikirim!'), backgroundColor: AppTheme.success),
                 );
               }
             },
@@ -657,9 +657,6 @@ class _WaliProfilTab extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: () async {
               await auth.signOut();
-              if (context.mounted) {
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              }
             },
             icon: const Icon(Icons.logout),
             label: const Text('Keluar'),
